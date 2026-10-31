@@ -59,6 +59,7 @@ if (args.includes('--script')) {
     console.log(`  that-${k}     "${w.that}"`);
   }
   console.log('\nparty        "Hooray! You popped ten bubbles! Great job!"');
+  console.log('bye          "All done! Great playing. Bye bye!"');
   process.exit(0);
 }
 
@@ -68,12 +69,12 @@ const map = {};
 const problems = [];
 const files = fs.readdirSync(audioDir).filter((f) => !f.startsWith('.') && f !== 'README.txt').sort();
 for (const f of files) {
-  const m = f.match(/^(prompt|cheer|that)-([A-Za-z0-9])\.([A-Za-z0-9]+)$/) || f.match(/^(party)()\.([A-Za-z0-9]+)$/);
+  const m = f.match(/^(prompt|cheer|that)-([A-Za-z0-9])\.([A-Za-z0-9]+)$/) || f.match(/^(party|bye)()\.([A-Za-z0-9]+)$/);
   if (!m || !EXT.includes(m[3].toLowerCase())) {
-    problems.push(`"${f}" doesn't match the naming pattern, so it is ignored. Examples: cheer-B.m4a, prompt-3.mp3, party.m4a`);
+    problems.push(`"${f}" doesn't match the naming pattern, so it is ignored. Examples: cheer-B.m4a, prompt-3.mp3, party.m4a, bye.m4a`);
     continue;
   }
-  const key = m[1] === 'party' ? 'party' : `${m[1]}:${m[2].toUpperCase()}`;
+  const key = m[1] === 'party' || m[1] === 'bye' ? m[1] : `${m[1]}:${m[2].toUpperCase()}`;
   if (map[key]) { problems.push(`two files for ${key}: "${path.basename(map[key])}" and "${f}". Using the first.`); continue; }
   map[key] = 'audio/' + f;
 }
@@ -94,6 +95,7 @@ console.log(`Found ${Object.keys(map).length} recording(s) in audio/.${updated !
 const missing = [];
 for (const k of items) for (const kind of ['prompt', 'cheer', 'that']) if (!map[`${kind}:${k}`]) missing.push(`${kind}-${k}`);
 if (!map.party) missing.push('party');
+if (!map.bye) missing.push('bye');
 if (missing.length) {
   console.log('Still using the computer voice for:');
   console.log('  ' + missing.join(', '));

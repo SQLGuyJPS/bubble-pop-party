@@ -14,6 +14,7 @@ For each letter or number the game needs three short clips, plus one celebration
 | `cheer-A` | "Yay! A! A is for apple." | She pops the right bubble |
 | `that-A` | "That's the letter A." | She pops a *wrong* bubble. It plays right before the prompt for the real target, so she hears "That's the letter A. Can you find the letter B?" |
 | `party` | "Hooray! You popped ten bubbles! Great job!" | Every 10th star |
+| `bye` | "All done! Great playing. Bye bye!" | When the play time you set is up |
 
 For numbers it is the same idea: `prompt-3` "Can you find the number 3?", `cheer-3` "Yay! Three! Three stars.",
 `that-3` "That's the number three."
@@ -25,7 +26,7 @@ node tools/update-audio.mjs --script
 ```
 
 Add `--all` to also see every other letter and number. For the default A–E and 1–5 that's
-5 × 3 + 5 × 3 + 1 = **31 clips**.
+5 × 3 + 5 × 3 + 2 = **32 clips**.
 
 ### Tips for a good recording
 
@@ -58,13 +59,13 @@ Put the files in the **`audio`** folder inside the project, named exactly like t
 audio/prompt-A.m4a     audio/cheer-A.m4a     audio/that-A.m4a
 audio/prompt-B.m4a     audio/cheer-B.m4a     audio/that-B.m4a
 audio/prompt-1.m4a     audio/cheer-1.m4a     audio/that-1.m4a
-audio/party.m4a
+audio/party.m4a        audio/bye.m4a
 ```
 
 Rules:
 
 - Use a **capital letter**: `cheer-B.m4a`, not `cheer-b.m4a`. Web servers care about this.
-- The kind is lowercase: `prompt`, `cheer`, `that`, `party`.
+- The kind is lowercase: `prompt`, `cheer`, `that`, `party`, `bye`.
 - No spaces, no extra words.
 - **Windows hides file endings by default.** In File Explorer, turn on *View, then Show, then File name extensions*
   so you can see the real name. Otherwise you can end up with `cheer-B.m4a.m4a` without noticing.
