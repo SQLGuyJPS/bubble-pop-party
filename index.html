@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#7fd6ff">
+<title>Bubble Pop Party</title>
+<style>
+@font-face {
+  font-family: 'Andika';
+  src: url('fonts/Andika-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --navy: #1d2b64;
+  --sky-top: #7fd6ff;
+  --sky-bottom: #e6f8ff;
+  --font: 'Andika', 'Arial Rounded MT Bold', 'Trebuchet MS', system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+  background: var(--sky-top);
+  font-family: var(--font);
+  font-weight: 700;
+  color: var(--navy);
+}
+
+body {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(var(--sky-top), var(--sky-bottom));
+}
+
+canvas#game {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+
+/* ---- Target banner (always visible, top of screen) ---- */
+#banner {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  align-items: center;
+  gap: 2.5vmin;
+  padding: 1vmin 4vmin 1vmin 3.5vmin;
+  background: rgba(255, 255, 255, 0.94);
+  border: 0.9vmin solid var(--navy);
+  border-radius: 999px;
+  box-shadow: 0 6px 0 rgba(29, 43, 100, 0.25);
+  pointer-events: none;
+}
+#banner.show { display: flex; }
+#banner.pop { animation: bannerPop 0.5s ease-out; }
+@keyframes bannerPop {
+  0% { transform: translateX(-50%) scale(0.6); }
+  60% { transform: translateX(-50%) scale(1.12); }
+  100% { transform: translateX(-50%) scale(1); }
+}
+#bGlyph {
+  font-size: clamp(56px, 13vmin, 150px);
+  line-height: 1;
+  min-width: 1.1em;
+  text-align: center;
+}
+#bPicWrap { text-align: center; line-height: 1.05; }
+#bPic { font-size: clamp(36px, 8vmin, 90px); }
+#bWord { font-size: clamp(14px, 2.6vmin, 28px); }
+#replayBtn {
+  pointer-events: auto;
+  touch-action: manipulation;
+  width: clamp(56px, 9vmin, 96px);
+  height: clamp(56px, 9vmin, 96px);
+  border-radius: 50%;
+  border: 0.7vmin solid var(--navy);
+  background: #ffe066;
+  font-size: clamp(26px, 5vmin, 52px);
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* ---- Start screen ---- */
+#start {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4vmin;
+  background: linear-gradient(#7fd6ff, #d9f4ff 60%, #fff2c9);
+  z-index: 10;
+}
+#start.hidden { display: none; }
+#start h1 {
+  margin: 0;
+  font-size: clamp(32px, 8vmin, 90px);
+  text-align: center;
+  color: var(--navy);
+  text-shadow: 0 4px 0 #fff;
+}
+#playBtn {
+  touch-action: manipulation;
+  width: min(58vmin, 380px);
+  height: min(58vmin, 380px);
+  border-radius: 50%;
+  border: 1.6vmin solid #fff;
+  outline: 0.8vmin solid var(--navy);
+  background: radial-gradient(circle at 35% 30%, #ff9ec2, #ff5c9a 70%);
+  box-shadow: 0 1.6vmin 0 rgba(29, 43, 100, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  animation: playPulse 1.6s ease-in-out infinite;
+}
+#playBtn svg { width: 50%; height: 50%; margin-left: 8%; }
+@keyframes playPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+#playLabel { font-size: clamp(18px, 4vmin, 40px); }
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<div id="banner" aria-live="polite">
+  <div id="bGlyph"></div>
+  <div id="bPicWrap">
+    <div id="bPic"></div>
+    <div id="bWord"></div>
+  </div>
+  <button id="replayBtn" type="button" aria-label="Say it again">&#128266;</button>
+</div>
+
+<div id="start">
+  <h1>Bubble Pop Party</h1>
+  <button id="playBtn" type="button" aria-label="Play">
+    <svg viewBox="0 0 100 100" aria-hidden="true">
+      <path d="M22 10 L88 50 L22 90 Z" fill="#fff" stroke="#1d2b64" stroke-width="8" stroke-linejoin="round"/>
+    </svg>
+  </button>
+  <div id="playLabel">Play</div>
+</div>
+
+<script>
+(function () {
+'use strict';
+
+/* =====================================================================
+   Tunable constants
+   ===================================================================== */
+var MAX_BUBBLES = 4;            // live + popping bubbles, never more than this
+var HIT_SCALE = 1.15;           // tap area is 15% bigger than the drawn bubble
+var POP_DURATION = 0.22;        // seconds
+var WOBBLE_DURATION = 0.7;      // seconds
+var RISE_SPEED = 0.075;         // screen heights per second (x speed setting)
+var BUBBLE_WIDTH_RATIO = 0.36;  // bubble diameter / screen width
+var BUBBLE_HEIGHT_CAP = 0.6;    // ...but never taller than this share of screen height
+var GLYPH_RATIO = 0.29 / 0.36;  // font size / bubble diameter (cap height ~ 20% of width)
+var SPAWN_DEPTH = 0.3;          // new bubbles start with their centre this many radii below the bottom edge,
+                                // so any of them can become the target and still be mostly visible
+var TAU = Math.PI * 2;
+
+/* Drop your own recordings in here later, e.g.
+     'cheer:B': 'audio/cheer-b.mp3'
+   Keys that say() uses:
+     prompt:<item>        "Can you find ...?"
+     cheer:<item>         "Yay! B! B is for ball."
+     wrong:<popped>:<target>   "That's the letter A. Can you find B?"
+   Files listed here are played instead of the computer voice. */
+var AUDIO_OVERRIDES = {};
+
+/* =====================================================================
+   Settings (parent settings screen arrives in a later milestone)
+   ===================================================================== */
+var DEFAULTS = {
+  mode: 'letters',        // 'letters' | 'numbers' | 'both'
+  letters: 'ABCDE',
+  numbers: '12345',
+  letterCase: 'upper',    // 'upper' | 'lower' | 'both'
+  speed: 1,
+  volume: 1,
+  voiceURI: '',
+  sessionMinutes: 0
+};
+var settings = Object.assign({}, DEFAULTS);
+
+/* =====================================================================
+   Items. "say" is a phonetic respelling so the computer voice reads the
+   letter NAME ("bee") instead of a word or a sound. "pic" is the picture
+   shown beside the big character.
+   ===================================================================== */
+var LETTERS = {
+  A: { say: 'ay',     word: 'apple',     pic: '🍎' },
+  B: { say: 'bee',    word: 'ball',      pic: '⚽' },
+  C: { say: 'see',    word: 'cat',       pic: '🐱' },
+  D: { say: 'dee',    word: 'dog',       pic: '🐶' },
+  E: { say: 'ee',     word: 'elephant',  pic: '🐘' },
+  F: { say: 'eff',    word: 'fish',      pic: '🐠' },
+  G: { say: 'jee',    word: 'goat',      pic: '🐐' },
+  H: { say: 'aitch',  word: 'hat',       pic: '🎩' },
+  I: { say: 'eye',    word: 'ice cream', pic: '🍦' },
+  J: { say: 'jay',    word: 'juice',     pic: '🧃' },
+  K: { say: 'kay',    word: 'kite',      pic: '🪁' },
+  L: { say: 'ell',    word: 'lion',      pic: '🦁' },
+  M: { say: 'em',     word: 'moon',      pic: '🌙' },
+  N: { say: 'en',     word: 'nose',      pic: '👃' },
+  O: { say: 'oh',     word: 'orange',    pic: '🍊' },
+  P: { say: 'pee',    word: 'pig',       pic: '🐷' },
+  Q: { say: 'cue',    word: 'queen',     pic: '👑' },
+  R: { say: 'ar',     word: 'rabbit',    pic: '🐰' },
+  S: { say: 'ess',    word: 'sun',       pic: '☀️' },
+  T: { say: 'tee',    word: 'tree',      pic: '🌳' },
+  U: { say: 'you',    word: 'umbrella',  pic: '☂️' },
+  V: { say: 'vee',    word: 'van',       pic: '🚐' },
+  W: { say: 'double you', word: 'whale', pic: '🐳' },
+  X: { say: 'ex',     word: 'box',       pic: '📦' },
+  Y: { say: 'why',    word: 'yo-yo',     pic: '🪀' },
+  Z: { say: 'zee',    word: 'zebra',     pic: '🦓' }
+};
+var NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+var NUMBERS = {};
+(function () {
+  for (var n = 0; n <= 9; n++) {
+    var pic = '';
+    for (var i = 0; i < n; i++) pic += '⭐';
+    NUMBERS[String(n)] = {
+      say: NUMBER_WORDS[n],
+      word: n === 0 ? 'no stars' : NUMBER_WORDS[n] + (n === 1 ? ' star' : ' stars'),
+      pic: n === 0 ? '⭕' : pic
+    };
+  }
+})();
+
+/* Characters a toddler can mix up. Never shown on screen together. */
+var LOOKALIKES = [['B', 'D'], ['P', 'Q'], ['M', 'W'], ['N', 'U'], ['6', '9'], ['O', '0'], ['I', 'L', '1']];
+
+function info(key) { return LETTERS[key] || NUMBERS[key]; }
+function isNumber(key) { return key >= '0' && key <= '9'; }
+function lookalike(a, b) {
+  if (a === b) return false;
+  for (var i = 0; i < LOOKALIKES.length; i++) {
+    var g = LOOKALIKES[i];
+    if (g.indexOf(a) >= 0 && g.indexOf(b) >= 0) return true;
+  }
+  return false;
+}
+function glyphFor(key) {
+  if (isNumber(key)) return key;
+  var c = settings.letterCase;
+  var lower = c === 'lower' || (c === 'both' && Math.random() < 0.5);
+  return lower ? key.toLowerCase() : key;
+}
+function pool() {
+  var keys = [];
+  if (settings.mode !== 'numbers') keys = keys.concat(String(settings.letters).toUpperCase().split(''));
+  if (settings.mode !== 'letters') keys = keys.concat(String(settings.numbers).split(''));
+  var seen = {};
+  var out = [];
+  for (var i = 0; i < keys.length; i++) {
+    var k = keys[i];
+    if (info(k) && !seen[k]) { seen[k] = true; out.push(k); }
+  }
+  return out.length ? out : ['A'];
+}
+
+/* =====================================================================
+   Speech: everything goes through say(key)
+   ===================================================================== */
+function nameOf(key) { return info(key).say; }
+function kindOf(key) { return isNumber(key) ? 'number' : 'letter'; }
+function anchorText(key) {
+  return isNumber(key) ? info(key).word : nameOf(key) + ' is for ' + info(key).word;
+}
+function textFor(key) {
+  var p = String(key).split(':');
+  if (p[0] === 'prompt' && info(p[1])) {
+    return 'Can you find the ' + kindOf(p[1]) + ' ' + nameOf(p[1]) + '?';
+  }
+  if (p[0] === 'cheer' && info(p[1])) {
+    return 'Yay! ' + nameOf(p[1]) + '! ' + anchorText(p[1]) + '.';
+  }
+  if (p[0] === 'wrong' && info(p[1]) && info(p[2])) {
+    return "That's the " + kindOf(p[1]) + ' ' + nameOf(p[1]) + '. Can you find ' + nameOf(p[2]) + '?';
+  }
+  return '';
+}
+
+var speechOK = false;
+try { speechOK = typeof speechSynthesis !== 'undefined' && typeof SpeechSynthesisUtterance !== 'undefined'; } catch (e) { speechOK = false; }
+var speechToken = 0;       // bumps every time speech is stopped, so stale callbacks do nothing
+var speakTimer = 0;
+var safetyTimer = 0;
+var currentUtter = null;   // keep a reference: iOS can drop utterances that get garbage collected
+var currentAudio = null;
+var sayLog = [];
+
+var BAD_VOICES = /bad news|bahh|bells|boing|bubbles|cellos|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|albert|fred|junior|ralph|kathy|deranged|hysterical|pipe/i;
+var GOOD_VOICES = /samantha|ava|allison|susan|karen|zoe|aria|jenny|google us english|nicky|serena/i;
+
+function getVoices() {
+  try { return speechSynthesis.getVoices() || []; } catch (e) { return []; }
+}
+function pickVoice() {
+  var list = getVoices();
+  if (!list.length) return null;
+  var i;
+  if (settings.voiceURI) {
+    for (i = 0; i < list.length; i++) if (list[i].voiceURI === settings.voiceURI) return list[i];
+  }
+  var best = null, bestScore = -1;
+  for (i = 0; i < list.length; i++) {
+    var v = list[i];
+    if (BAD_VOICES.test(v.name)) continue;
+    var lang = String(v.lang || '').replace('_', '-');
+    var score = 0;
+    if (lang === 'en-US') score += 10;
+    else if (lang.indexOf('en') === 0) score += 4;
+    else continue;
+    if (GOOD_VOICES.test(v.name)) score += 5;
+    if (/female|natural|enhanced|premium/i.test(v.name)) score += 1;
+    if (score > bestScore) { best = v; bestScore = score; }
+  }
+  return best;
+}
+if (speechOK) {
+  try {
+    if (speechSynthesis.addEventListener) speechSynthesis.addEventListener('voiceschanged', function () { getVoices(); });
+    getVoices(); // some browsers only start loading voices once asked
+  } catch (e) { /* ignore */ }
+}
+
+function stopSpeech() {
+  speechToken++;
+  clearTimeout(speakTimer);
+  clearTimeout(safetyTimer);
+  currentUtter = null;
+  if (speechOK) { try { speechSynthesis.cancel(); } catch (e) { /* ignore */ } }
+  if (currentAudio) {
+    try { currentAudio.pause(); } catch (e) { /* ignore */ }
+    currentAudio = null;
+  }
+}
+
+function say(key, after) {
+  stopSpeech();                    // also calls speechSynthesis.cancel(): never more than one utterance
+  var token = speechToken;
+  var finished = false;
+  sayLog.push(key);
+  function done() {
+    if (finished || token !== speechToken) return;
+    finished = true;
+    clearTimeout(safetyTimer);
+    if (after) after();
+  }
+  function speakText() {
+    var text = textFor(key);
+    if (!speechOK || !text) {                 // no voice available: visuals only
+      speakTimer = setTimeout(done, 1500);
+      return;
+    }
+    speakTimer = setTimeout(function () {     // tiny delay after cancel() so browsers don't swallow the new line
+      if (token !== speechToken) return;
+      try {
+        var u = new SpeechSynthesisUtterance(text);
+        var v = pickVoice();
+        if (v) { u.voice = v; u.lang = v.lang; } else { u.lang = 'en-US'; }
+        u.rate = 0.8;
+        u.pitch = 1.1;
+        u.volume = settings.volume;
+        u.onend = done;
+        u.onerror = done;
+        currentUtter = u;
+        safetyTimer = setTimeout(done, 7000);  // if the browser never reports "finished"
+        speechSynthesis.speak(u);
+      } catch (e) {
+        speakTimer = setTimeout(done, 1500);
+      }
+    }, 50);
+  }
+  var file = AUDIO_OVERRIDES[key];
+  if (file && typeof Audio !== 'undefined') {
+    try {
+      var a = new Audio(file);
+      a.volume = settings.volume;
+      a.onended = done;
+      a.onerror = function () { if (token === speechToken && currentAudio === a) { currentAudio = null; speakText(); } };
+      currentAudio = a;
+      var pr = a.play();
+      if (pr && pr.catch) pr.catch(function () { if (token === speechToken && currentAudio === a) { currentAudio = null; speakText(); } });
+      return;
+    } catch (e) { currentAudio = null; }
+  }
+  speakText();
+}
+
+/* =====================================================================
+   Sound effects (Web Audio, no files)
+   ===================================================================== */
+var audioCtx = null, master = null, noiseBuf = null;
+
+function ensureAudio() {
+  try {
+    if (!audioCtx) {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      audioCtx = new AC();
+      master = audioCtx.createGain();
+      master.gain.value = settings.volume;
+      master.connect(audioCtx.destination);
+      var len = Math.floor(audioCtx.sampleRate * 0.06);
+      noiseBuf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+      var d = noiseBuf.getChannelData(0);
+      for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+      // play one silent sound inside the tap: this is what unlocks audio on iPads
+      var s = audioCtx.createBufferSource();
+      s.buffer = audioCtx.createBuffer(1, 1, 22050);
+      s.connect(audioCtx.destination);
+      s.start(0);
+    }
+    if (audioCtx.state !== 'running' && audioCtx.resume) audioCtx.resume();
+  } catch (e) { /* sound effects are optional */ }
+}
+function playPop() {
+  if (!audioCtx || !master) return;
+  try {
+    var t = audioCtx.currentTime;
+    var src = audioCtx.createBufferSource();
+    src.buffer = noiseBuf;
+    var bp = audioCtx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 1800 + Math.random() * 900;
+    var ng = audioCtx.createGain();
+    ng.gain.value = 0.7;
+    src.connect(bp); bp.connect(ng); ng.connect(master);
+    src.start(t);
+    var o = audioCtx.createOscillator();
+    var g = audioCtx.createGain();
+    var f = 520 + Math.random() * 260;
+    o.type = 'sine';
+    o.frequency.setValueAtTime(f, t);
+    o.frequency.exponentialRampToValueAtTime(f * 0.35, t + 0.13);
+    g.gain.setValueAtTime(0.55, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+    o.connect(g); g.connect(master);
+    o.start(t); o.stop(t + 0.16);
+  } catch (e) { /* ignore */ }
+}
+function playBoop() {   // soft, friendly "bloop" for a wrong pick: never a buzzer
+  if (!audioCtx || !master) return;
+  try {
+    var t = audioCtx.currentTime;
+    var o = audioCtx.createOscillator();
+    var g = audioCtx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(330, t);
+    o.frequency.exponentialRampToValueAtTime(240, t + 0.18);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.28, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+    o.connect(g); g.connect(master);
+    o.start(t); o.stop(t + 0.24);
+  } catch (e) { /* ignore */ }
+}
+
+/* =====================================================================
+   Screen, layout, game state
+   ===================================================================== */
+var els = {
+  canvas: document.getElementById('game'),
+  start: document.getElementById('start'),
+  play: document.getElementById('playBtn'),
+  banner: document.getElementById('banner'),
+  glyph: document.getElementById('bGlyph'),
+  pic: document.getElementById('bPic'),
+  word: document.getElementById('bWord'),
+  replay: document.getElementById('replayBtn')
+};
+var ctx = els.canvas.getContext('2d');
+var W = 1024, H = 768, dpr = 1;
+var D = 300, R = 150, FS = 240;     // bubble diameter, radius, font size (px)
+
+var bubbles = [];
+var target = null;                  // { key, glyph, since }
+var lastTarget = '';
+var simTime = 0;
+var spawnCooldown = 0;
+var lastWrongAt = -99, lastWrongBubble = null;
+var started = false, running = false, paused = false;
+var raf = 0, lastT = 0, resumeTimer = 0;
+var hues = [330, 48, 190, 130, 265, 18];
+
+function layout() {
+  D = Math.min(W * BUBBLE_WIDTH_RATIO, H * BUBBLE_HEIGHT_CAP);
+  R = D / 2;
+  FS = D * GLYPH_RATIO;
+  // after a rotation the bubble size changes: keep fresh bubbles from sitting too far below the bottom edge
+  var lowest = (H + R * SPAWN_DEPTH) / H;
+  for (var i = 0; i < bubbles.length; i++) if (bubbles[i].ny > lowest) bubbles[i].ny = lowest;
+}
+function resize() {
+  var w = els.canvas.clientWidth || window.innerWidth || 1024;
+  var h = els.canvas.clientHeight || window.innerHeight || 768;
+  dpr = Math.min(window.devicePixelRatio || 1, 3);
+  els.canvas.width = Math.round(w * dpr);
+  els.canvas.height = Math.round(h * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  W = w; H = h;
+  layout();     // bubbles and the target live in screen-relative units, so nothing is lost
+}
+
+function isLive(b) { return b.state === 'live'; }
+function pos(b) {
+  var x = b.nx * W + Math.sin(b.phase * 0.9) * R * b.sway;
+  x = Math.max(R * 0.5, Math.min(W - R * 0.5, x));
+  return { x: x, y: b.ny * H, r: R };
+}
+function liveTargetBubble() {
+  for (var i = 0; i < bubbles.length; i++) {
+    if (isLive(bubbles[i]) && bubbles[i].key === target.key) return bubbles[i];
+  }
+  return null;
+}
+
+/* Pick an x that keeps this bubble away from the others */
+function bestX(y) {
+  var lo = R * 1.05, hi = W - R * 1.05;
+  if (hi <= lo) return W / 2;
+  var bestXv = lo, bestD = -1;
+  for (var n = 0; n < 12; n++) {
+    var x = lo + Math.random() * (hi - lo);
+    var md = 1e9;
+    for (var i = 0; i < bubbles.length; i++) {
+      var p = pos(bubbles[i]);
+      md = Math.min(md, Math.hypot(p.x - x, p.y - y));
+    }
+    if (md > bestD) { bestD = md; bestXv = x; }
+  }
+  return bestXv;
+}
+function recycleToBottom(b) {
+  var y = H + R * SPAWN_DEPTH;
+  b.nx = bestX(y) / W;
+  b.ny = y / H;
+}
+function pickHue() {
+  var used = {};
+  for (var i = 0; i < bubbles.length; i++) used[bubbles[i].hue] = true;
+  var free = hues.filter(function (h) { return !used[h]; });
+  var list = free.length ? free : hues;
+  return list[Math.floor(Math.random() * list.length)];
+}
+function spawnBubble(key, glyph, y) {
+  var x = bestX(y);
+  bubbles.push({
+    key: key, glyph: glyph,
+    nx: x / W, ny: y / H,
+    hue: pickHue(),
+    speed: 0.85 + Math.random() * 0.3,
+    phase: Math.random() * TAU,
+    sway: 0.08 + Math.random() * 0.1,
+    state: 'live', popT: 0, wobble: 0
+  });
+}
+function pickDistractor() {
+  var keys = bubbles.map(function (b) { return b.key; });
+  var cands = pool().filter(function (k) {
+    if (k === target.key || lookalike(k, target.key)) return false;
+    if (keys.indexOf(k) >= 0) return false;
+    for (var i = 0; i < keys.length; i++) if (lookalike(keys[i], k)) return false;
+    return true;
+  });
+  var fresh = cands.filter(function (k) { return k !== lastTarget; });   // don't bring back the one just popped
+  if (fresh.length) cands = fresh;
+  return cands.length ? cands[Math.floor(Math.random() * cands.length)] : null;
+}
+
+/* =====================================================================
+   Target selection
+   ===================================================================== */
+function chooseTarget() {
+  var live = bubbles.filter(isLive);
+  var keys = live.map(function (b) { return b.key; });
+  var p = pool();
+  // no immediate repeat, and nothing that looks like a bubble already on screen
+  var cands = p.filter(function (k) {
+    if (k === lastTarget) return false;
+    if (keys.indexOf(k) >= 0) return true;
+    for (var i = 0; i < keys.length; i++) if (lookalike(keys[i], k)) return false;
+    return true;
+  });
+  var conflict = false;
+  if (!cands.length) {
+    cands = p.filter(function (k) { return k !== lastTarget; });
+    conflict = true;
+  }
+  if (!cands.length) cands = p.slice();
+  var k = cands[Math.floor(Math.random() * cands.length)];
+  var existing = null;
+  for (var j = 0; j < live.length; j++) if (live[j].key === k) existing = live[j];
+  target = { key: k, glyph: existing ? existing.glyph : glyphFor(k), since: simTime };
+  if (existing && existing.ny * H < 0) recycleToBottom(existing);   // it was already leaving through the top
+  if (conflict) {   // rare with tiny item lists: pop away any look-alike bubble
+    for (var m = 0; m < live.length; m++) {
+      if (live[m].key !== k && lookalike(live[m].key, k)) { live[m].state = 'popping'; live[m].popT = 0; live[m].silent = true; }
+    }
+  }
+  updateBanner();
+}
+function updateBanner() {
+  var it = info(target.key);
+  els.glyph.textContent = target.glyph;
+  els.pic.textContent = it.pic;
+  els.word.textContent = it.word;
+  els.banner.classList.add('show');
+  els.banner.classList.remove('pop');
+  void els.banner.offsetWidth;   // restart the little bounce animation
+  els.banner.classList.add('pop');
+}
+
+/* =====================================================================
+   Pops
+   ===================================================================== */
+function onCorrect(b) {
+  b.state = 'popping';
+  b.popT = 0;
+  playPop();
+  var popped = target.key;
+  lastTarget = popped;
+  chooseTarget();
+  say('cheer:' + popped, function () { say('prompt:' + target.key); });
+}
+function onWrong(b) {
+  var again = lastWrongBubble === b && simTime - lastWrongAt < 1.5;   // mashing the same bubble shouldn't restart the voice
+  b.wobble = WOBBLE_DURATION;
+  playBoop();
+  if (!again) say('wrong:' + b.key + ':' + target.key);
+  lastWrongAt = simTime;
+  lastWrongBubble = b;
+}
+function handlePointer(x, y) {
+  if (!running || paused) return;
+  var best = null, bd = Infinity;
+  for (var i = 0; i < bubbles.length; i++) {
+    var p = pos(bubbles[i]);
+    var d = Math.hypot(x - p.x, y - p.y);
+    if (d <= p.r * HIT_SCALE && d < bd) { best = bubbles[i]; bd = d; }
+  }
+  if (!best || best.state !== 'live') return;   // taps on a bubble that is already popping are ignored
+  if (best.key === target.key) onCorrect(best); else onWrong(best);
+}
+
+/* =====================================================================
+   Simulation step (separate from drawing so it can be tested)
+   ===================================================================== */
+function step(dt) {
+  if (!running) return;
+  simTime += dt;
+  var i;
+  for (i = bubbles.length - 1; i >= 0; i--) {
+    var b = bubbles[i];
+    b.phase += dt;
+    if (b.state === 'popping') {
+      b.popT += dt;
+      if (b.popT >= POP_DURATION) bubbles.splice(i, 1);
+      continue;
+    }
+    if (b.wobble > 0) b.wobble = Math.max(0, b.wobble - dt);
+    b.ny -= RISE_SPEED * settings.speed * b.speed * dt;
+    var y = b.ny * H;
+    if (b.key === target.key) {
+      if (y < 0) recycleToBottom(b);   // the target floated off the top: bring it back up from the bottom
+    } else if (y < -R * 1.05) {
+      bubbles.splice(i, 1);
+    }
+  }
+  spawnCooldown -= dt;
+  if (!liveTargetBubble()) {
+    if (bubbles.length < MAX_BUBBLES) spawnBubble(target.key, target.glyph, H + R * SPAWN_DEPTH);
+  } else if (spawnCooldown <= 0 && bubbles.length < MAX_BUBBLES) {
+    var k = pickDistractor();
+    if (k) {
+      spawnBubble(k, glyphFor(k), H + R * SPAWN_DEPTH);
+      spawnCooldown = 0.8 + Math.random() * 1.2;
+    } else {
+      spawnCooldown = 0.5;
+    }
+  }
+}
+
+/* =====================================================================
+   Drawing
+   ===================================================================== */
+var capCache = { fs: 0, cap: 0 };
+function fontStr(fs) { return '700 ' + fs + 'px Andika, "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif'; }
+function capHeight(fs) {
+  if (capCache.fs === fs) return capCache.cap;
+  ctx.font = fontStr(fs);
+  var m = ctx.measureText('H');
+  var cap = (m && m.actualBoundingBoxAscent) || fs * 0.7;
+  capCache = { fs: fs, cap: cap };
+  return cap;
+}
+
+function drawBubble(b) {
+  var p = pos(b);
+  var r = p.r;
+  var scale = 1, alpha = 1, rot = 0, pk = 0;
+  if (b.state === 'popping') {
+    pk = Math.min(1, b.popT / POP_DURATION);
+    scale = 1 + 0.35 * pk;
+    alpha = 1 - pk;
+  } else {
+    scale = 1 + 0.015 * Math.sin(b.phase * 2.1);
+    if (b.wobble > 0) {
+      var k = b.wobble / WOBBLE_DURATION;
+      rot = Math.sin((1 - k) * Math.PI * 6) * 0.22 * k;
+      scale *= 1 + 0.05 * k;
+    }
+  }
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  ctx.rotate(rot);
+  ctx.scale(scale, scale);
+  ctx.globalAlpha = alpha;
+
+  var g = ctx.createRadialGradient(-r * 0.35, -r * 0.4, r * 0.05, 0, 0, r);
+  g.addColorStop(0, 'hsl(' + b.hue + ',100%,93%)');
+  g.addColorStop(0.55, 'hsl(' + b.hue + ',95%,78%)');
+  g.addColorStop(1, 'hsl(' + b.hue + ',85%,64%)');
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, TAU);
+  ctx.fillStyle = g;
+  ctx.fill();
+  ctx.lineWidth = r * 0.07;
+  ctx.strokeStyle = '#ffffff';
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 1.045, 0, TAU);
+  ctx.lineWidth = r * 0.03;
+  ctx.strokeStyle = '#1d2b64';
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.82, Math.PI * 1.08, Math.PI * 1.42);
+  ctx.lineWidth = r * 0.07;
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+  ctx.stroke();
+
+  var cap = capHeight(FS);
+  ctx.font = fontStr(FS);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = FS * 0.1;
+  ctx.strokeStyle = '#ffffff';
+  ctx.strokeText(b.glyph, 0, cap / 2);
+  ctx.fillStyle = '#1d2b64';
+  ctx.fillText(b.glyph, 0, cap / 2);
+
+  if (b.state === 'popping') {   // little droplets flying outward
+    ctx.fillStyle = '#ffffff';
+    for (var i = 0; i < 8; i++) {
+      var a = i * TAU / 8;
+      ctx.beginPath();
+      ctx.arc(Math.cos(a) * r * (0.9 + 0.9 * pk), Math.sin(a) * r * (0.9 + 0.9 * pk), r * 0.09 * (1 - pk), 0, TAU);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  for (var i = 0; i < bubbles.length; i++) drawBubble(bubbles[i]);
+}
+
+/* =====================================================================
+   Main loop, start, pause / resume
+   ===================================================================== */
+function frame(ts) {
+  raf = requestAnimationFrame(frame);
+  if (!lastT) lastT = ts;
+  var dt = (ts - lastT) / 1000;
+  lastT = ts;
+  if (dt > 0.05) dt = 0.05;
+  step(dt);
+  draw();
+}
+function startGame() {
+  running = true;
+  paused = false;
+  bubbles.length = 0;
+  lastTarget = '';
+  simTime = 0;
+  spawnCooldown = 0.5;
+  chooseTarget();
+  spawnBubble(target.key, target.glyph, H * 0.62);
+  for (var i = 0; i < 2; i++) {
+    var k = pickDistractor();
+    if (k) spawnBubble(k, glyphFor(k), i === 0 ? H * 0.98 : H * 0.3);
+  }
+  lastT = 0;
+  cancelAnimationFrame(raf);
+  raf = requestAnimationFrame(frame);
+}
+function pauseGame() {
+  if (!running) return;
+  paused = true;
+  clearTimeout(resumeTimer);
+  stopSpeech();
+  cancelAnimationFrame(raf);
+}
+function resumeGame() {
+  if (!running || !paused) return;
+  paused = false;
+  lastT = 0;
+  ensureAudio();
+  raf = requestAnimationFrame(frame);
+  clearTimeout(resumeTimer);
+  resumeTimer = setTimeout(function () { if (!paused) say('prompt:' + target.key); }, 700);   // gentle re-prompt
+}
+function onPlay() {
+  if (started) return;
+  started = true;
+  ensureAudio();          // must happen inside the tap
+  els.start.classList.add('hidden');
+  startGame();
+  say('prompt:' + target.key);   // first speech also happens inside the tap, which iPads require
+}
+
+/* =====================================================================
+   Events
+   ===================================================================== */
+els.canvas.addEventListener('pointerdown', function (e) {
+  e.preventDefault();
+  if (audioCtx && audioCtx.state !== 'running') ensureAudio();
+  var rect = els.canvas.getBoundingClientRect();
+  handlePointer(e.clientX - rect.left, e.clientY - rect.top);   // every finger gets its own pointerdown
+}, { passive: false });
+
+els.play.addEventListener('pointerup', function (e) { e.preventDefault(); onPlay(); });
+els.play.addEventListener('click', onPlay);   // keyboard fallback
+els.replay.addEventListener('pointerup', function (e) {
+  e.preventDefault();
+  if (running && !paused) say('prompt:' + target.key);
+});
+
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', function () { setTimeout(resize, 200); });
+if (window.visualViewport && window.visualViewport.addEventListener) {
+  window.visualViewport.addEventListener('resize', resize);
+}
+document.addEventListener('visibilitychange', function () {
+  if (document.hidden) pauseGame(); else resumeGame();
+});
+window.addEventListener('pagehide', pauseGame);
+
+/* Block zoom, selection, scrolling, pull-to-refresh and menus.
+   iOS Safari ignores user-scalable=no, so also stop its gesture events. */
+['gesturestart', 'gesturechange', 'gestureend'].forEach(function (n) {
+  document.addEventListener(n, function (e) { e.preventDefault(); }, { passive: false });
+});
+document.addEventListener('touchmove', function (e) { e.preventDefault(); }, { passive: false });
+document.addEventListener('touchstart', function (e) { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive: false });
+var lastTouchEnd = 0;
+document.addEventListener('touchend', function (e) {   // stops double-tap zoom
+  var now = Date.now();
+  if (now - lastTouchEnd <= 300) e.preventDefault();
+  lastTouchEnd = now;
+}, { passive: false });
+document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+document.addEventListener('dblclick', function (e) { e.preventDefault(); });
+document.addEventListener('selectstart', function (e) { e.preventDefault(); });
+
+/* The big font loads from a file; once it's ready, re-measure it */
+try {
+  if (document.fonts && document.fonts.load) {
+    document.fonts.load('700 100px Andika').then(function () { capCache.fs = 0; }, function () {});
+  }
+} catch (e) { /* the system font stack is the fallback */ }
+
+resize();
+
+/* =====================================================================
+   Test hooks (only when opened with ?debug or by tests/invariants.mjs)
+   ===================================================================== */
+var debugOn = false;
+try { debugOn = !!window.__BPP_TEST || (typeof location !== 'undefined' && /[?&]debug\b/.test(location.search)); } catch (e) { debugOn = false; }
+if (debugOn) {
+  window.__bpp = {
+    start: function () { started = true; els.start.classList.add('hidden'); startGame(); },
+    step: step,
+    resize: function (w, h) { W = w; H = h; layout(); },
+    tap: handlePointer,
+    pos: pos,
+    pool: pool,
+    isLive: isLive,
+    lookalike: lookalike,
+    sayLog: sayLog,
+    setSettings: function (o) { Object.assign(settings, o); },
+    state: function () { return { bubbles: bubbles, target: target, simTime: simTime, W: W, H: H, R: R, FS: FS }; },
+    pause: pauseGame,
+    resume: resumeGame,
+    capHeight: function () { capCache.fs = 0; return capHeight(FS); },
+    check: function () {
+      var errs = [];
+      var live = bubbles.filter(isLive);
+      var p = pool();
+      if (bubbles.length > MAX_BUBBLES) errs.push('more than ' + MAX_BUBBLES + ' bubbles: ' + bubbles.length);
+      for (var i = 0; i < live.length; i++) {
+        if (p.indexOf(live[i].key) < 0) errs.push('bubble ' + live[i].key + ' not in item pool');
+        for (var j = i + 1; j < live.length; j++) {
+          if (live[i].key === live[j].key) errs.push('duplicate ' + live[i].key);
+          if (lookalike(live[i].key, live[j].key)) errs.push('look-alikes together: ' + live[i].key + live[j].key);
+        }
+      }
+      if (!target) { errs.push('no target'); return errs; }
+      if (p.indexOf(target.key) < 0) errs.push('target not in item pool');
+      var tb = liveTargetBubble();
+      if (!tb) {
+        if (simTime - target.since > 2) errs.push('target bubble missing for ' + (simTime - target.since).toFixed(2) + 's');
+      } else {
+        var tp = pos(tb);
+        if (tp.y < -1 || tp.y > H + R * SPAWN_DEPTH + 1) errs.push('target bubble off screen, y=' + tp.y);
+        if (tp.x < 0 || tp.x > W) errs.push('target bubble off screen sideways, x=' + tp.x);
+        if (tb.glyph !== target.glyph) errs.push('target glyph mismatch');
+      }
+      if (els.glyph.textContent !== target.glyph) errs.push('banner shows ' + els.glyph.textContent + ' but target is ' + target.glyph);
+      return errs;
+    }
+  };
+}
+})();
+</script>
+</body>
+</html>

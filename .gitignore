@@ -1,0 +1,14 @@
+# Operating-system clutter
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor and tool folders
+.vscode/
+.idea/
+.claude/
+
+# Logs and temporary files
+*.log
+*.tmp
+node_modules/
