@@ -495,6 +495,13 @@ canvas#game {
       <button type="button" class="opt" data-act="volume" data-val="1">100%</button>
     </div>
 
+    <h3>Letter at the top</h3>
+    <div class="seg">
+      <button type="button" class="opt" data-act="glyph" data-val="show">Show</button>
+      <button type="button" class="opt" data-act="glyph" data-val="hide">Hide</button>
+    </div>
+    <p class="note">Hide: only the picture and the spoken name are given, so she has to match the sound to the letter.</p>
+
     <h3>Hint sparkles</h3>
     <div class="seg">
       <button type="button" class="opt" data-act="sparkles" data-val="auto">Auto</button>
@@ -590,7 +597,8 @@ var DEFAULTS = {
   voiceURI: '',
   sparkles: 'auto',       // extra sparkles on the hinted bubble: 'auto' (only for letters she misses), 'on', 'off'
                           // (the glow and pulse are always on)
-  sessionMinutes: 0
+  sessionMinutes: 0,
+  showGlyph: true         // show the big letter/number in the top banner (off = she must listen and match the name)
 };
 var settings = Object.assign({}, DEFAULTS);
 
@@ -624,6 +632,7 @@ function sanitizeSettings(o) {
   if (typeof o.voiceURI === 'string') s.voiceURI = o.voiceURI.slice(0, 300);
   if (o.sparkles === 'auto' || o.sparkles === 'on' || o.sparkles === 'off') s.sparkles = o.sparkles;
   s.sessionMinutes = nearest(o.sessionMinutes, SESSIONS, DEFAULTS.sessionMinutes);
+  if (o.showGlyph === true || o.showGlyph === false) s.showGlyph = o.showGlyph;
   return s;
 }
 function loadSettings() {
@@ -643,11 +652,11 @@ loadSettings();
    shown beside the big character.
    ===================================================================== */
 var LETTERS = {
-  A: { say: 'ay',     word: 'apple',     pic: '🍎' },
+  A: { say: 'ey',     word: 'apple',     pic: '🍎' },   // "ay" was read like "eye"
   B: { say: 'bee',    word: 'ball',      pic: '⚽' },
   C: { say: 'see',    word: 'cat',       pic: '🐱' },
   D: { say: 'dee',    word: 'dog',       pic: '🐶' },
-  E: { say: 'ee',     word: 'elephant',  pic: '🐘' },
+  E: { say: 'E',      word: 'elephant',  pic: '🐘' },   // "ee" was read as "E E"; a lone capital E is read as the letter name
   F: { say: 'eff',    word: 'fish',      pic: '🐠' },
   G: { say: 'jee',    word: 'goat',      pic: '🐐' },
   H: { say: 'aitch',  word: 'hat',       pic: '🎩' },
@@ -1201,6 +1210,7 @@ function weightedPick(list) {
 function updateBanner() {
   var it = info(target.key);
   els.glyph.textContent = target.glyph;
+  els.glyph.classList.toggle('hidden', !settings.showGlyph);
   els.pic.textContent = it.pic;
   els.word.textContent = it.word;
   els.banner.classList.add('show');
@@ -1731,6 +1741,7 @@ function isSelected(act, val) {
     case 'speed': return settings.speed === Number(val);
     case 'volume': return settings.volume === Number(val);
     case 'sparkles': return settings.sparkles === val;
+    case 'glyph': return settings.showGlyph === (val === 'show');
     case 'session': return settings.sessionMinutes === Number(val);
     case 'toggle-letter': return settings.letters.indexOf(val) >= 0;
     case 'toggle-number': return settings.numbers.indexOf(val) >= 0;
@@ -1764,6 +1775,7 @@ function doAction(act, val) {
     case 'speed': settings.speed = Number(val); break;
     case 'volume': settings.volume = Number(val); break;
     case 'sparkles': settings.sparkles = val; break;
+    case 'glyph': settings.showGlyph = (val === 'show'); break;
     case 'session': settings.sessionMinutes = Number(val); break;
     case 'voice': settings.voiceURI = String(val); break;
   }
