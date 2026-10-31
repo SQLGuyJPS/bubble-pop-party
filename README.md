@@ -51,7 +51,7 @@ Settings (saved on the device; if the browser blocks saving, the game just uses 
 | Bubble speed | Slow, Normal, Fast |
 | Volume | 20% to 100% |
 | Hint sparkles | Auto, Always, Off |
-| Computer voice | Pick a voice and press "Hear it" (it says "Yay! ay! ay is for apple.") |
+| Computer voice | Pick a voice and press "Hear it" (it says "Great!", a short pause, then "ay is for apple.") |
 | Play time | No limit, 5, 10 or 15 minutes |
 
 When the play time is up she sees a friendly goodbye screen and the game stops. Starting again needs the

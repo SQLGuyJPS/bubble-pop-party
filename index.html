@@ -567,12 +567,14 @@ var TAU = Math.PI * 2;
    (See AUDIO-GUIDE.md.) Files listed here are played instead of the computer voice.
    Keys that say() uses:
      prompt:<item>   "Can you find the letter B?"
-     cheer:<item>    "Yay! B! B is for ball."
+     cheer:<item>    "Great!" (short pause) "B is for ball."
      that:<item>     "That's the letter B."   (used first when a wrong bubble is popped)
      party           "Hooray! You popped ten bubbles!"
      bye             "All done! Great playing. Bye bye!"  (when play time is up)  */
 /* AUDIO_OVERRIDES:begin */
-var AUDIO_OVERRIDES = {};
+var AUDIO_OVERRIDES = {
+  'prompt:A': 'audio/prompt-A.m4a'
+};
 /* AUDIO_OVERRIDES:end */
 
 /* =====================================================================
@@ -728,7 +730,7 @@ function textFor(key) {
     return 'Can you find the ' + kindOf(p[1]) + ' ' + nameOf(p[1]) + '?';
   }
   if (p[0] === 'cheer' && info(p[1])) {
-    return 'Yay! ' + nameOf(p[1]) + '! ' + anchorText(p[1]) + '.';
+    return 'Great! ' + anchorText(p[1]) + '.';
   }
   if (p[0] === 'that' && info(p[1])) {
     return "That's the " + kindOf(p[1]) + ' ' + nameOf(p[1]) + '.';
@@ -737,6 +739,15 @@ function textFor(key) {
   if (p[0] === 'bye') return 'All done! Great playing. Bye bye!';
   if (p[0] === 'voicetest') return textFor('cheer:A');   // what the parent hears from "Hear it": the tricky letter A
   return '';
+}
+/* The computer voice says a cheer in two pieces with a short pause between: "Great!" ... "ay is for apple."
+   (A recording of a cheer is one file, so the pause is whatever you leave when you record it.) */
+var CHEER_PAUSE_MS = 500;
+function speechPieces(clip) {
+  var p = String(clip === 'voicetest' ? 'cheer:A' : clip).split(':');   // "Hear it" plays the tricky letter A
+  if (p[0] === 'cheer' && info(p[1])) return ['Great!', anchorText(p[1]) + '.'];
+  var t = textFor(clip);
+  return t ? [t] : [];
 }
 /* One spoken moment can be several clips played one after another.
    A wrong pop is "That's the letter A." followed by "Can you find the letter B?" */
@@ -813,29 +824,38 @@ function playClip(clip, token, next) {
     next();
   }
   function speakText() {
-    var text = textFor(clip);
-    if (!speechOK || !text) {                 // no voice available: visuals only
+    var pieces = speechPieces(clip);
+    if (!speechOK || !pieces.length) {        // no voice available: visuals only
       speakTimer = setTimeout(nextOnce, 1200);
       return;
     }
-    speakTimer = setTimeout(function () {     // tiny delay after cancel() so browsers don't swallow the new line
+    function speakPiece(i) {                  // one utterance at a time; the next starts after the last ends
       if (token !== speechToken) return;
+      var finished = false;
+      function done() {
+        if (finished || token !== speechToken) return;
+        finished = true;
+        clearTimeout(safetyTimer);
+        if (i + 1 < pieces.length) speakTimer = setTimeout(function () { speakPiece(i + 1); }, CHEER_PAUSE_MS);
+        else nextOnce();
+      }
       try {
-        var u = new SpeechSynthesisUtterance(text);
+        var u = new SpeechSynthesisUtterance(pieces[i]);
         var v = pickVoice();
         if (v) { u.voice = v; u.lang = v.lang; } else { u.lang = 'en-US'; }
         u.rate = 0.7;
         u.pitch = 1.1;
         u.volume = settings.volume;
-        u.onend = nextOnce;
-        u.onerror = nextOnce;
+        u.onend = done;
+        u.onerror = done;
         currentUtter = u;
-        safetyTimer = setTimeout(nextOnce, 8000);  // if the browser never reports "finished"
+        safetyTimer = setTimeout(done, 8000);  // if the browser never reports "finished"
         speechSynthesis.speak(u);
       } catch (e) {
-        speakTimer = setTimeout(nextOnce, 1200);
+        speakTimer = setTimeout(done, 1200);
       }
-    }, 50);
+    }
+    speakTimer = setTimeout(function () { speakPiece(0); }, 50);   // tiny delay after cancel() so browsers don't swallow the new line
   }
   var file = AUDIO_OVERRIDES[clip];
   if (file && typeof Audio !== 'undefined') {

@@ -7,7 +7,7 @@
  * Do not edit the two marked lines by hand: `node tools/update-sw.mjs` rewrites them.
  */
 /* SW_VERSION:begin */
-var CACHE_VERSION = 'bubble-pop-party-829cc923c9';
+var CACHE_VERSION = 'bubble-pop-party-358c04d4af';
 /* SW_VERSION:end */
 /* SW_FILES:begin */
 var PRECACHE = [
@@ -17,7 +17,8 @@ var PRECACHE = [
   'icons/apple-touch-icon.png',
   'icons/icon-192.png',
   'icons/icon-512.png',
-  'fonts/Andika-Bold.ttf'
+  'fonts/Andika-Bold.ttf',
+  'audio/prompt-A.m4a'
 ];
 /* SW_FILES:end */
 

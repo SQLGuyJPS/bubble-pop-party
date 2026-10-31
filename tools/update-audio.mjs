@@ -39,13 +39,13 @@ function words(key) {
     const stars = key === '0' ? 'no stars' : key === '1' ? 'one star' : n + ' stars';
     return {
       prompt: `Can you find the number ${key}?`,
-      cheer: `Yay! ${cap}! ${cap === 'Zero' ? 'Zero stars' : stars[0].toUpperCase() + stars.slice(1)}.`,
+      cheer: `Great! (short pause) ${cap === 'Zero' ? 'Zero stars' : stars[0].toUpperCase() + stars.slice(1)}.`,
       that: `That's the number ${key}.`
     };
   }
   return {
     prompt: `Can you find the letter ${key}?`,
-    cheer: `Yay! ${key}! ${key} is for ${letterWords[key] || '...'}.`,
+    cheer: `Great! (short pause) ${key} is for ${letterWords[key] || '...'}.`,
     that: `That's the letter ${key}.`
   };
 }

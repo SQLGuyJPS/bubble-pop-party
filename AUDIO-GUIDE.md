@@ -11,12 +11,12 @@ For each letter or number the game needs three short clips, plus one celebration
 | File name | What to say | When the game plays it |
 | --- | --- | --- |
 | `prompt-A` | "Can you find the letter A?" | Telling her what to find, and every ~8 seconds if she waits |
-| `cheer-A` | "Yay! A! A is for apple." | She pops the right bubble |
+| `cheer-A` | "Great!" *(pause about half a second)* "A is for apple." | She pops the right bubble |
 | `that-A` | "That's the letter A." | She pops a *wrong* bubble. It plays right before the prompt for the real target, so she hears "That's the letter A. Can you find the letter B?" |
 | `party` | "Hooray! You popped ten bubbles! Great job!" | Every 10th star |
 | `bye` | "All done! Great playing. Bye bye!" | When the play time you set is up |
 
-For numbers it is the same idea: `prompt-3` "Can you find the number 3?", `cheer-3` "Yay! Three! Three stars.",
+For numbers it is the same idea: `prompt-3` "Can you find the number 3?", `cheer-3` "Great!" *(pause)* "Three stars.",
 `that-3` "That's the number three."
 
 To see the exact words for your current letters and numbers, run this in the project folder:
@@ -34,7 +34,7 @@ Add `--all` to also see every other letter and number. For the default A–E and
 - Go slowly and sound happy. A 2-year-old likes a bright, clear voice.
 - Record in a quiet room, with the phone or microphone close to your mouth.
 - Start talking right away and stop right after the last word. Long silence at the start makes the game feel laggy.
-- Keep each clip short: under about 3 seconds. The "Yay!" clip is the longest.
+- Keep each clip short: under about 3 seconds. The "Great!" clip is the longest. Leave the short pause between "Great!" and "A is for apple" inside the one recording.
 - Record several clips in a row in one sitting so they all sound the same volume.
 
 ## 2. How to record

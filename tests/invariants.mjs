@@ -73,7 +73,7 @@ function makeEnv(opts) {
   };
 
   // fake speech: counts how many utterances are waiting so we can prove it never exceeds one
-  const speech = { queued: [], maxQueued: 0, spoken: 0, cancels: 0, texts: [], volumes: [] };
+  const speech = { queued: [], maxQueued: 0, spoken: 0, cancels: 0, texts: [], times: [], volumes: [] };
   const speechSynthesis = {
     getVoices: () => [
       { name: 'Bad News', lang: 'en-US', voiceURI: 'bn' },
@@ -85,6 +85,7 @@ function makeEnv(opts) {
       speech.queued.push(u);
       speech.spoken++;
       speech.texts.push(u.text);
+      speech.times.push(clock);
       speech.volumes.push(u.volume);
       speech.maxQueued = Math.max(speech.maxQueued, speech.queued.length);
       u._timer = fakeSetTimeout(() => { speech.queued = speech.queued.filter((x) => x !== u); if (u.onend) u.onend({}); }, 1500);
@@ -402,7 +403,7 @@ function otherBubble(bpp) {
   tapBubble(env.bpp, targetBubble(env.bpp));
   await new Promise((r) => setImmediate(r));
   runFor(env, 3);
-  expect(env.speech.texts.some((x) => /Yay!/.test(x)), 'broken recording did not fall back to the computer voice');
+  expect(env.speech.texts.some((x) => /Great!/.test(x)), 'broken recording did not fall back to the computer voice');
   console.log(`${failures === before ? 'ok  ' : 'FAIL'} recorded clips and voice fallback`);
 }
 
@@ -528,7 +529,13 @@ function passGate(env) {
   env.bpp.ui.hear();
   env.advance(200);
   expect(!env.bpp.state().muted, '"Hear it" stayed muted');
-  expect(env.speech.texts[env.speech.texts.length - 1] === 'Yay! ay! ay is for apple.', 'the voice test said: ' + env.speech.texts[env.speech.texts.length - 1]);
+  for (let t = 0; t < 4000; t += 50) env.advance(50);   // small steps, so chained timers keep their real spacing
+  const heard = env.speech.texts.slice(-2);
+  expect(heard[0] === 'Great!' && heard[1] === 'ay is for apple.', 'the voice test said: ' + heard.join(' | '));
+  expect(!env.speech.texts.some((x) => /Yay/.test(x)), 'the cheer still says Yay');
+  const gap = env.speech.times[env.speech.times.length - 1] - env.speech.times[env.speech.times.length - 2];
+  expect(gap >= 1500 + 400, 'no pause between "Great!" and "ay is for apple" (gap ' + gap + ' ms)');
+  expect(env.speech.maxQueued <= 1, 'the two parts of the cheer were queued together');
   expect(env.speech.volumes[env.speech.volumes.length - 1] === 0.6, 'the volume setting did not reach the voice');
   console.log(`${failures === before ? 'ok  ' : 'FAIL'} saving settings (and surviving bad storage)`);
 }
