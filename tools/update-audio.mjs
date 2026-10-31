@@ -8,6 +8,7 @@
 // (see AUDIO-GUIDE.md). Only index.html is changed, and only the AUDIO_OVERRIDES block.
 import fs from 'node:fs';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -104,3 +105,7 @@ if (missing.length) {
   console.log(`Every clip for ${items.join(' ')} is recorded.`);
 }
 if (problems.length) { console.log('\nCheck these:'); problems.forEach((p) => console.log('  - ' + p)); }
+
+// the offline list (sw.js) has to include the new recordings, so refresh it too
+const sw = spawnSync(process.execPath, [path.join(root, 'tools', 'update-sw.mjs')], { encoding: 'utf8' });
+console.log('\n' + (sw.stdout || sw.stderr).trim());

@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#7fd6ff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Bubble Pop">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <title>Bubble Pop Party</title>
 <style>
 @font-face {
@@ -514,6 +521,8 @@ canvas#game {
     </div>
     <p class="note">When time is up she sees a goodbye screen. Starting again needs the parent gate.</p>
 
+    <p class="note" id="versionNote"></p>
+
     <div class="doneBar"><button type="button" id="doneBtn">Done</button></div>
   </div>
 </div>
@@ -1000,6 +1009,7 @@ var els = {
   voiceSel: document.getElementById('voiceSel'),
   hearBtn: document.getElementById('hearBtn'),
   doneBtn: document.getElementById('doneBtn'),
+  versionNote: document.getElementById('versionNote'),
   bye: document.getElementById('bye')
 };
 var ctx = els.canvas.getContext('2d');
@@ -1742,8 +1752,19 @@ function doAction(act, val) {
   saveSettings();
   if (settingsOpen) renderSettings();
 }
+/* Shows which saved copy of the game is running, so a parent can tell whether an update arrived */
+function showVersion() {
+  try {
+    if (typeof caches === 'undefined' || !caches.keys) { els.versionNote.textContent = ''; return; }
+    caches.keys().then(function (names) {
+      var mine = names.filter(function (n) { return n.indexOf('bubble-pop-party-') === 0; });
+      els.versionNote.textContent = mine.length ? 'Game version: ' + mine[0].slice('bubble-pop-party-'.length) : '';
+    }, function () {});
+  } catch (e) { /* the version line is optional */ }
+}
 function openSettings() {
   settingsOpen = true;
+  showVersion();
   settingsBefore = itemsKey();
   lockGame();
   buildChips();
@@ -1834,6 +1855,29 @@ try {
 } catch (e) { /* the system font stack is the fallback */ }
 
 resize();
+
+/* =====================================================================
+   Offline support. Only works from a web address (http/https), so opening
+   index.html straight from disk simply skips this and the game still runs.
+   ===================================================================== */
+try {
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !window.__BPP_TEST) {
+    var hadWorker = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      /* A newer version of the game just took over. Switch to it now only if she hasn't
+         started playing; otherwise it simply loads the next time the game is opened. */
+      if (hadWorker && !started) { try { location.reload(); } catch (e) { /* next launch */ } }
+    });
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').then(function (reg) {
+        /* a game left open on the home screen for days still looks for updates */
+        document.addEventListener('visibilitychange', function () {
+          if (!document.hidden) { try { reg.update(); } catch (e) { /* ignore */ } }
+        });
+      }, function () { /* no offline support, the game still works */ });
+    });
+  }
+} catch (e) { /* the game works without it */ }
 
 /* =====================================================================
    Test hooks (only when opened with ?debug or by tests/invariants.mjs)

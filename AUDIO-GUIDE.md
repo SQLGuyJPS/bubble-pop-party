@@ -93,9 +93,10 @@ uses the computer voice for that one, and the `update-audio` report will usually
 
 ## 5. Put it on the iPad
 
-Recordings are part of the game, so they go out with the next deploy (Milestone 4 sets this up, and the
-`audio` folder is included). After that, adding recordings later is just: add files, run
-`node tools/update-audio.mjs`, then push the update. The README explains the push and the refresh step.
+Recordings are part of the game, so they go out with the next push. The `audio` folder is saved on the iPad for
+offline use automatically. Adding recordings later is just: add files, run `node tools/update-audio.mjs`
+(it also refreshes the offline list), run `node tests/invariants.mjs`, then `git add -A`, `git commit -m "Add recordings"`
+and `git push`. The README ("Sending an update to the iPad") explains how to make the iPad pick up the new version.
 
 ## If something sounds wrong
 

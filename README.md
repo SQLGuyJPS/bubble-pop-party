@@ -5,8 +5,7 @@ character. The game shows and says which one to find, and the child pops it.
 
 Plain HTML, CSS and JavaScript. No frameworks, no network calls, no tracking, no ads.
 
-> Status: **Milestone 3** (parent gate, settings, play-time limit). The offline install and
-> GitHub Pages deploy (M4) come next.
+> Status: **Milestone 4** (icons, offline install, GitHub Pages deploy). All four milestones are done.
 
 ## Run it on your computer
 
@@ -20,7 +19,7 @@ Then open <http://localhost:8000> in your browser and press the big Play button.
 Press `Ctrl+C` in the terminal to stop the server.
 
 You can also just double-click `index.html`. The game works that way too; only the offline
-install (a later milestone) needs the server.
+install needs a web address (the server, or GitHub Pages).
 
 Add `?debug` to the address (<http://localhost:8000/?debug>) to switch on test hooks.
 
@@ -77,7 +76,10 @@ target never repeats straight away, wrong pops never change the target, the voic
 one line, hints and repeat prompts happen on time, confetti stays under 60 pieces, missed letters come up
 more, mute is silent, recordings play one at a time with a fallback to the computer voice, the parent gate
 needs a full 3-second hold and the right sum, settings are remembered (and survive blocked or damaged
-storage), and the play-time limit ends the session until a parent restarts it. It prints
+storage), and the play-time limit ends the session until a parent restarts it. It also checks that the icons are
+the right size, that every file (including recordings) is in the offline list, that nothing uses a path starting with
+`/`, that the game makes no network calls, and that the offline helper installs, updates and works with no
+connection. It prints
 `0 problems found` when everything is fine.
 
 ## Files
@@ -85,9 +87,14 @@ storage), and the play-time limit ends the session until a parent restarts it. I
 | File | What it is |
 | --- | --- |
 | `index.html` | The whole game (HTML, CSS and JavaScript in one file) |
+| `manifest.webmanifest` | Tells the iPad the game's name, icon and colors |
+| `sw.js` | The offline helper (see "How the offline copy works") |
+| `icons/` | The app icons (180, 192 and 512 pixels) |
 | `fonts/` | The Andika font and its license (SIL Open Font License) |
 | `audio/` | Your own recordings (see AUDIO-GUIDE.md) |
-| `tools/update-audio.mjs` | Connects your recordings to the game (not part of the game itself) |
+| `tools/update-sw.mjs` | Run before every push: refreshes the offline file list and version (not part of the game itself) |
+| `tools/make-icons.mjs` | Draws the icon PNGs |
+| `tools/update-audio.mjs` | Connects your recordings to the game |
 | `tests/invariants.mjs` | The automatic rules check (not part of the game) |
 
 ## Changing what the voice says
@@ -96,9 +103,87 @@ Open `index.html` and find the `LETTERS` list. Each letter has a `say` spelling 
 `B` is `bee`) that the computer voice reads aloud, plus a word (`ball`) and a picture. If a
 letter sounds wrong on your tablet, change its `say` text and reload. Recordings (above) are the better fix.
 
-## Deploying and updating
+## Putting it on the iPad (GitHub Pages)
 
-Added in Milestone 4.
+GitHub can host the game for free. Once it is online, the iPad opens it like an app and it keeps working
+with no internet.
+
+### One-time setup: turn on GitHub Pages
+
+1. Open <https://github.com/SQLGuyJPS/bubble-pop-party/settings/pages> (sign in if asked).
+2. Under **Build and deployment**, set **Source** to **Deploy from a branch**.
+3. Under **Branch**, choose **main** and the folder **/ (root)**, then press **Save**.
+4. Wait 1 to 2 minutes and reload that page. A box says **Your site is live at** and shows the address:
+
+   **<https://sqlguyjps.github.io/bubble-pop-party/>**
+
+### One-time setup: add it to the iPad's home screen
+
+1. On the iPad, open **Safari** (it must be Safari, not Chrome) and go to the address above.
+2. Wait until the game shows its Play button. This first visit is when the iPad saves the game for offline use,
+   so use Wi-Fi.
+3. Tap the **Share** button (a square with an arrow), then **Add to Home Screen**, then **Add**.
+4. From now on, start the game from the new **Bubble Pop** icon. It opens full screen with no browser bars.
+5. Turn on **Airplane Mode**, then open the icon again. The game should still work, and that proves the
+   offline copy is saved. (You can turn Airplane Mode off again afterwards.)
+
+### Sending an update to the iPad
+
+Every time you change the game (new recordings, a changed letter, a fix), do these steps in the project folder:
+
+```bash
+node tools/update-sw.mjs
+```
+
+This gives the game a new version number. That number is what makes the iPad download the new files.
+If you added recordings, `node tools/update-audio.mjs` does this step for you.
+
+```bash
+node tests/invariants.mjs
+```
+
+Check that it ends with `0 problems found`.
+
+```bash
+git add -A
+git commit -m "Describe what you changed"
+git push
+```
+
+Wait about a minute for GitHub to publish. Then on the iPad, **open the game with Wi-Fi on**. It quietly downloads the
+new version in the background. **Close it (swipe it away in the app switcher) and open it again** to play the
+new version.
+
+To check which version the iPad has: pass the parent gate, open Settings, and look at the bottom for
+**Game version: xxxxxxxxxx**. It should match the one in `sw.js` (the `CACHE_VERSION` line) on your computer.
+
+### If the iPad still shows the old version
+
+1. Open the game once on Wi-Fi, close it completely, and open it again. (Two rounds is sometimes needed.)
+2. Still old? Delete the Bubble Pop icon (hold the icon, **Remove App**), open Safari, go to the address
+   again and **Add to Home Screen** again. This always gives a clean, newest copy.
+3. Last resort: iPad **Settings, then Apps, then Safari, then Clear History and Website Data**. This logs you out
+   of websites on that iPad, so try 1 and 2 first.
+
+### Good to know
+
+- Pages can only show files that are pushed, so run the push steps above; changes on your computer alone do not
+  reach the iPad.
+- While you work on your computer, `python -m http.server` also installs the offline copy in your browser.
+  If a change doesn't show up on `localhost:8000`, run `node tools/update-sw.mjs` and reload twice (or open the
+  page in a private window).
+- Opening `index.html` by double-clicking works too. It just skips the offline copy.
+
+## How the offline copy works
+
+`sw.js` is a small helper the browser runs in the background. It saves every file of the game (`index.html`, the
+font, the icons and your recordings) under a version name, and from then on serves the game from those saved
+files. `node tools/update-sw.mjs` lists the files and makes the version name from their contents, so a change to any
+file means a new version, and the old saved copy is deleted once the new one is ready. Everything uses relative paths,
+because GitHub Pages serves the game from a sub-folder (`/bubble-pop-party/`).
+
+Icons are drawn by `node tools/make-icons.mjs` (nothing to install). You only need that if you want to change the
+icon's look.
 
 ## Credits
 
