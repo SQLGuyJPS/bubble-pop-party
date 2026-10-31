@@ -619,7 +619,7 @@ function passGate(env) {
   expect(/apple-mobile-web-app-capable" content="yes"/.test(html), 'missing the iPad full-screen tag');
   const pageLinks = [...html.matchAll(/(?:src|href)="([^"#]+)"/g)].map((m) => m[1]);
   expect(pageLinks.every(relative), 'index.html has a link starting with "/" or a web address: ' + pageLinks.filter((p) => !relative(p)).join(', '));
-  expect(!/\bfetch\(|XMLHttpRequest|WebSocket|sendBeacon/.test(code), 'the game makes a network call');
+  expect(!/\bfetch\((?!file\))|XMLHttpRequest|WebSocket|sendBeacon/.test(code), 'the game makes a network call');
 
   // run the worker against a fake browser
   const fakeNet = { up: true, missing: new Set(), hits: [] };

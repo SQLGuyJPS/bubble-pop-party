@@ -7,7 +7,7 @@
  * Do not edit the two marked lines by hand: `node tools/update-sw.mjs` rewrites them.
  */
 /* SW_VERSION:begin */
-var CACHE_VERSION = 'bubble-pop-party-b2faae2037';
+var CACHE_VERSION = 'bubble-pop-party-c5bd44be1f';
 /* SW_VERSION:end */
 /* SW_FILES:begin */
 var PRECACHE = [
@@ -52,7 +52,27 @@ self.addEventListener('fetch', function (event) {
     // ignoreSearch: "?debug" and the like still find the saved page
     caches.open(CACHE_VERSION).then(function (cache) {
       return cache.match(req, { ignoreSearch: true }).then(function (hit) {
-        if (hit) return hit;
+        if (hit) {
+          // Safari asks for audio in byte ranges and stalls or fails if it gets the whole file back
+          // as a plain 200. Answer a range request with a proper 206 slice of the saved file.
+          var range = req.headers && req.headers.get && req.headers.get('range');
+          var m = range && /^bytes=(\d*)-(\d*)$/.exec(range);
+          if (!m || !hit.arrayBuffer) return hit;
+          return hit.arrayBuffer().then(function (buf) {
+            var size = buf.byteLength;
+            var start = m[1] === '' ? Math.max(0, size - Number(m[2])) : Number(m[1]);
+            var end = m[1] === '' || m[2] === '' ? size - 1 : Math.min(Number(m[2]), size - 1);
+            if (start > end || start >= size) return new Response(null, { status: 416, headers: { 'Content-Range': 'bytes */' + size } });
+            return new Response(buf.slice(start, end + 1), {
+              status: 206,
+              headers: {
+                'Content-Type': hit.headers.get('Content-Type') || 'audio/mp4',
+                'Content-Range': 'bytes ' + start + '-' + end + '/' + size,
+                'Content-Length': String(end - start + 1)
+              }
+            });
+          });
+        }
         return fetch(req).catch(function () {
           // offline and not saved: opening the game's address still shows the game
           return req.mode === 'navigate' ? cache.match('index.html') : Response.error();

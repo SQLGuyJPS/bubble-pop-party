@@ -867,6 +867,22 @@ function playClip(clip, token, next) {
     speakTimer = setTimeout(function () { speakPiece(0); }, 50);   // tiny delay after cancel() so browsers don't swallow the new line
   }
   var file = AUDIO_OVERRIDES[clip];
+  if (file && clipBuffers[clip] && audioCtx && master) {
+    /* Preferred path: the recording was decoded ahead of time and plays through the same Web Audio
+       context as the pops. No download or decode at play time (no freeze), and the browser's audio
+       output is never handed back and forth between an <audio> element and Web Audio. */
+    try {
+      if (audioCtx.state !== 'running' && audioCtx.resume) audioCtx.resume();
+      var bs = audioCtx.createBufferSource();
+      bs.buffer = clipBuffers[clip];
+      bs.connect(master);
+      bs.onended = nextOnce;
+      currentAudio = { pause: function () { bs.onended = null; try { bs.stop(); } catch (e) { /* ignore */ } } };
+      safetyTimer = setTimeout(nextOnce, 15000);
+      bs.start(0);
+      return;
+    } catch (e) { currentAudio = null; }
+  }
   if (file && typeof Audio !== 'undefined') {
     try {
       var a = new Audio(file);
@@ -907,6 +923,26 @@ function say(key, after) {
    Sound effects (Web Audio, no files)
    ===================================================================== */
 var audioCtx = null, master = null, noiseBuf = null;
+var clipBuffers = {};    // decoded recordings, by clip name (filled in the background)
+
+/* Loads and decodes every recording once, right after audio is unlocked. Until a clip is ready (or if
+   it can't be decoded) playClip falls back to a normal <audio> element, then to the computer voice. */
+function preloadClips() {
+  if (!audioCtx || typeof fetch !== 'function') return;
+  Object.keys(AUDIO_OVERRIDES).forEach(function (clip) {
+    if (clipBuffers[clip] || clipBuffers['loading:' + clip]) return;
+    clipBuffers['loading:' + clip] = true;
+    var file = AUDIO_OVERRIDES[clip];
+    try {
+      fetch(file).then(function (res) {
+        if (!res.ok) throw new Error('missing');
+        return res.arrayBuffer();
+      }).then(function (data) {
+        audioCtx.decodeAudioData(data, function (buf) { clipBuffers[clip] = buf; }, function () { /* keep <audio> fallback */ });
+      }).catch(function () { delete clipBuffers['loading:' + clip]; });
+    } catch (e) { /* keep <audio> fallback */ }
+  });
+}
 var muted = false;       // the corner speaker button; silences effects, recordings and the voice
 
 function applyVolume() {
@@ -942,10 +978,17 @@ function ensureAudio() {
       s.start(0);
     }
     if (audioCtx.state !== 'running' && audioCtx.resume) audioCtx.resume();
+    preloadClips();
   } catch (e) { /* sound effects are optional */ }
+}
+/* iPads can leave the audio context "suspended" or "interrupted" (after an <audio> clip, a call, a
+   screen lock...). Every effect asks it to wake up again first. */
+function wakeAudio() {
+  try { if (audioCtx && audioCtx.state !== 'running' && audioCtx.resume) audioCtx.resume(); } catch (e) { /* ignore */ }
 }
 function playPop() {
   if (!audioCtx || !master) return;
+  wakeAudio();
   try {
     var t = audioCtx.currentTime;
     var src = audioCtx.createBufferSource();
@@ -971,6 +1014,7 @@ function playPop() {
 }
 function playFanfare() {   // a short happy "ta-da" for every tenth star
   if (!audioCtx || !master) return;
+  wakeAudio();
   try {
     var t = audioCtx.currentTime;
     [523.25, 659.25, 783.99, 1046.5].forEach(function (f, i) {
@@ -989,6 +1033,7 @@ function playFanfare() {   // a short happy "ta-da" for every tenth star
 }
 function playBoop() {   // soft, friendly "bloop" for a wrong pick: never a buzzer
   if (!audioCtx || !master) return;
+  wakeAudio();
   try {
     var t = audioCtx.currentTime;
     var o = audioCtx.createOscillator();
