@@ -7,7 +7,7 @@
  * Do not edit the two marked lines by hand: `node tools/update-sw.mjs` rewrites them.
  */
 /* SW_VERSION:begin */
-var CACHE_VERSION = 'bubble-pop-party-c5bd44be1f';
+var CACHE_VERSION = 'bubble-pop-party-4d4bcc3c6c';
 /* SW_VERSION:end */
 /* SW_FILES:begin */
 var PRECACHE = [

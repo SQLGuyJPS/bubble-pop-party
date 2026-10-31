@@ -958,7 +958,8 @@ function setMuted(m) {
   if (!muted && running && !paused) say('prompt:' + target.key);   // tell the child what to find again
 }
 
-function ensureAudio() {
+var audioUnlocked = false;
+function ensureAudio(early) {
   try {
     if (!audioCtx) {
       var AC = window.AudioContext || window.webkitAudioContext;
@@ -971,16 +972,21 @@ function ensureAudio() {
       noiseBuf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
       var d = noiseBuf.getChannelData(0);
       for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    }
+    preloadClips();
+    if (early) return;   // called at page load, outside a tap: only get the recordings decoding
+    if (!audioUnlocked) {
       // play one silent sound inside the tap: this is what unlocks audio on iPads
       var s = audioCtx.createBufferSource();
       s.buffer = audioCtx.createBuffer(1, 1, 22050);
       s.connect(audioCtx.destination);
       s.start(0);
+      audioUnlocked = true;
     }
     if (audioCtx.state !== 'running' && audioCtx.resume) audioCtx.resume();
-    preloadClips();
   } catch (e) { /* sound effects are optional */ }
 }
+ensureAudio(true);   // start decoding the recordings now, so the very first prompt is already ready
 /* iPads can leave the audio context "suspended" or "interrupted" (after an <audio> clip, a call, a
    screen lock...). Every effect asks it to wake up again first. */
 function wakeAudio() {
