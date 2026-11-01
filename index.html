@@ -561,6 +561,12 @@ var BUBBLE_HEIGHT_CAP = 0.55;   // ...but never taller than this share of screen
 var GLYPH_RATIO = 0.28 / 0.32;  // font size / bubble diameter (cap height ~ 20% of width)
 var SPAWN_DEPTH = 0.3;          // new bubbles start with their centre this many radii below the bottom edge,
                                 // so any of them can become the target and still be mostly visible
+/* Which bubbles may be asked for next. After a pop, the new target is picked from the bubbles already on
+   screen plus the next one due to rise from the bottom. A bubble already on screen only counts if it will
+   stay catchable for at least MIN_CATCH_SECONDS more, so the child is never asked for something that is
+   about to float away. The distance this covers depends on bubble size and speed (see secondsCatchable). */
+var MIN_CATCH_SECONDS = 6;      // about 3 s for the cheer and the new prompt to be spoken, plus 3 s to spot and tap it
+var MIN_VISIBLE_FRACTION = 0.25;// a bubble is "gone" once less than this share of its height is still on screen
 var MAX_PARTICLES = 60;         // confetti cap so older tablets keep up
 var HINT_WRONG_POPS = 2;        // wrong pops before the target gently glows
 var HINT_IDLE_SECONDS = 15;     // ...or this long with no taps
@@ -1099,6 +1105,7 @@ var D = 300, R = 150, FS = 240;     // bubble diameter, radius, font size (px)
 var bubbles = [];
 var particles = [];                 // confetti
 var target = null;                  // { key, glyph, since }
+var upcoming = null;                // key of the bubble that will rise from the bottom next
 var lastTarget = '';
 var simTime = 0;
 var spawnCooldown = 0;
@@ -1190,44 +1197,89 @@ function spawnBubble(key, glyph, y) {
     state: 'live', popT: 0, wobble: 0
   });
 }
+/* Is k free to appear on screen: not already there, and not a look-alike of anything that is? */
+function freeToAppear(k) {
+  for (var i = 0; i < bubbles.length; i++) {
+    if (bubbles[i].key === k || lookalike(bubbles[i].key, k)) return false;
+  }
+  return true;
+}
+/* Items that were missed this session come up more often, so the next bubble to rise is picked with the
+   same weights as a target (fresh items are preferred over the one that was just popped). */
 function pickDistractor() {
-  var keys = bubbles.map(function (b) { return b.key; });
   var cands = pool().filter(function (k) {
-    if (k === target.key || lookalike(k, target.key)) return false;
-    if (keys.indexOf(k) >= 0) return false;
-    for (var i = 0; i < keys.length; i++) if (lookalike(keys[i], k)) return false;
-    return true;
+    return k !== target.key && !lookalike(k, target.key) && freeToAppear(k);
   });
   var fresh = cands.filter(function (k) { return k !== lastTarget; });   // don't bring back the one just popped
   if (fresh.length) cands = fresh;
-  return cands.length ? cands[Math.floor(Math.random() * cands.length)] : null;
+  return cands.length ? weightedPick(cands) : null;
 }
+/* The bubble that will rise from the bottom next. It is decided ahead of time so that it can also be
+   chosen as the target while it is still below the screen. */
+function refreshUpcoming() {
+  if (!upcoming || pool().indexOf(upcoming) < 0 || upcoming === target.key || !freeToAppear(upcoming) ||
+      lookalike(upcoming, target.key)) {
+    upcoming = pickDistractor();
+  }
+}
+
+/* How many seconds this bubble can still be tapped before it floats off the top.
+   A bubble counts as "gone" once only MIN_VISIBLE_FRACTION of its height is still on screen, which is when
+   its centre reaches y = R * (2 * MIN_VISIBLE_FRACTION - 1) (a little above the top edge). The distance from
+   the bubble to that line is divided by its own rise speed (screen heights per second x the speed setting x
+   the bubble's personal speed), so the answer depends on:
+     - bubble size (R): a bigger bubble takes longer to float away, so it can be chosen nearer the top
+     - speed setting and the bubble's own speed: faster bubbles leave sooner
+     - screen height (H): the distance is measured in pixels, the speed in screen heights */
+function goneY() { return R * (2 * MIN_VISIBLE_FRACTION - 1); }
+function secondsCatchable(b) {
+  var pxPerSecond = RISE_SPEED * settings.speed * b.speed * H;
+  return (b.ny * H - goneY()) / pxPerSecond;
+}
+function inBounds(b) { return isLive(b) && secondsCatchable(b) >= MIN_CATCH_SECONDS; }
 
 /* =====================================================================
    Target selection
    ===================================================================== */
 function chooseTarget() {
   var live = bubbles.filter(isLive);
-  var keys = live.map(function (b) { return b.key; });
   var p = pool();
-  // no immediate repeat, and nothing that looks like a bubble already on screen
-  var cands = p.filter(function (k) {
-    if (k === lastTarget) return false;
-    if (keys.indexOf(k) >= 0) return true;
-    for (var i = 0; i < keys.length; i++) if (lookalike(keys[i], k)) return false;
-    return true;
-  });
-  var conflict = false;
-  if (!cands.length) {
-    cands = p.filter(function (k) { return k !== lastTarget; });
-    conflict = true;
-  }
-  if (!cands.length) cands = p.slice();
-  var k = weightedPick(cands);
   var existing = null;
+  // Candidates: bubbles on screen that are still low enough to catch, plus the next one rising from the bottom.
+  // Never the item that was just popped.
+  var cands = [];
+  for (var c = 0; c < live.length; c++) {
+    var lk = live[c].key;
+    if (lk !== lastTarget && cands.indexOf(lk) < 0 && p.indexOf(lk) >= 0 && inBounds(live[c])) cands.push(lk);
+  }
+  if (upcoming && upcoming !== lastTarget && cands.indexOf(upcoming) < 0 && p.indexOf(upcoming) >= 0 &&
+      freeToAppear(upcoming)) cands.push(upcoming);
+  var conflict = false;
+  var k;
+  if (cands.length) {
+    k = weightedPick(cands);
+  } else {
+    // nothing suitable (only possible with a tiny item list): pick from the whole pool like a fresh game,
+    // with nothing that looks like a bubble already on screen
+    var keys = live.map(function (b) { return b.key; });
+    cands = p.filter(function (q) {
+      if (q === lastTarget) return false;
+      if (keys.indexOf(q) >= 0) return true;
+      for (var i = 0; i < keys.length; i++) if (lookalike(keys[i], q)) return false;
+      return true;
+    });
+    if (!cands.length) {
+      cands = p.filter(function (q) { return q !== lastTarget; });
+      conflict = true;
+    }
+    if (!cands.length) cands = p.slice();
+    k = weightedPick(cands);
+  }
   for (var j = 0; j < live.length; j++) if (live[j].key === k) existing = live[j];
   target = { key: k, glyph: existing ? existing.glyph : glyphFor(k), since: simTime };
-  if (existing && existing.ny * H < 0) recycleToBottom(existing);   // it was already leaving through the top
+  if (existing && !inBounds(existing)) recycleToBottom(existing);   // (fallback only) too high to catch: bring it up again
+  if (k === upcoming) upcoming = null;   // it is the target now; step() lets it rise from the bottom
+  refreshUpcoming();
   if (conflict) {   // rare with tiny item lists: pop away any look-alike bubble
     for (var m = 0; m < live.length; m++) {
       if (live[m].key !== k && lookalike(live[m].key, k)) { live[m].state = 'popping'; live[m].popT = 0; live[m].silent = true; }
@@ -1415,18 +1467,21 @@ function step(dt) {
     b.ny -= RISE_SPEED * settings.speed * b.speed * dt;
     var y = b.ny * H;
     if (b.key === target.key) {
-      if (y < 0) recycleToBottom(b);   // the target floated off the top: bring it back up from the bottom
+      if (y < goneY()) recycleToBottom(b);   // the target floated off the top: bring it back up from the bottom
     } else if (y < -R * 1.05) {
       bubbles.splice(i, 1);
     }
   }
   spawnCooldown -= dt;
+  refreshUpcoming();   // keep "the next bubble from the bottom" decided even while the screen is full
   if (!liveTargetBubble()) {
     if (bubbles.length < MAX_BUBBLES) spawnBubble(target.key, target.glyph, H + R * SPAWN_DEPTH);
   } else if (spawnCooldown <= 0 && bubbles.length < MAX_BUBBLES) {
-    var k = pickDistractor();
+    var k = upcoming;
     if (k) {
       spawnBubble(k, glyphFor(k), H + R * SPAWN_DEPTH);
+      upcoming = null;
+      refreshUpcoming();   // line up the one after it
       spawnCooldown = 0.8 + Math.random() * 1.2;
     } else {
       spawnCooldown = 0.5;
@@ -1578,6 +1633,7 @@ function resetBubbles() {
   bubbles.length = 0;
   particles.length = 0;
   lastTarget = '';
+  upcoming = null;
   lastActivity = simTime;
   spawnCooldown = 0.5;
   chooseTarget();
@@ -1586,6 +1642,8 @@ function resetBubbles() {
     var k = pickDistractor();
     if (k) spawnBubble(k, glyphFor(k), i === 0 ? H * 0.98 : H * 0.3);
   }
+  upcoming = null;
+  refreshUpcoming();   // chosen after the opening bubbles, so it can't duplicate one of them
 }
 function startGame() {
   running = true;
@@ -1977,10 +2035,13 @@ if (debugOn) {
     pool: pool,
     isLive: isLive,
     lookalike: lookalike,
+    secondsCatchable: secondsCatchable,
+    goneY: goneY,
+    minCatchSeconds: MIN_CATCH_SECONDS,
     sayLog: sayLog,
     setSettings: function (o) { Object.assign(settings, o); },
     state: function () {
-      return { bubbles: bubbles, target: target, simTime: simTime, W: W, H: H, R: R, FS: FS,
+      return { bubbles: bubbles, target: target, upcoming: upcoming, simTime: simTime, W: W, H: H, R: R, FS: FS,
                particles: particles.length, stars: stars, hintOn: hintOn, wrongsOnTarget: wrongsOnTarget,
                missed: missed, muted: muted, starsShown: starsShown, sparkles: sparklesWanted(),
                paused: paused, running: running, ended: ended, uiLock: uiLock, sessionElapsed: sessionElapsed,
@@ -2018,7 +2079,7 @@ if (debugOn) {
         if (simTime - target.since > 2) errs.push('target bubble missing for ' + (simTime - target.since).toFixed(2) + 's');
       } else {
         var tp = pos(tb);
-        if (tp.y < -1 || tp.y > H + R * SPAWN_DEPTH + 1) errs.push('target bubble off screen, y=' + tp.y);
+        if (tp.y < goneY() - 1 || tp.y > H + R * SPAWN_DEPTH + 1) errs.push('target bubble off screen, y=' + tp.y);
         if (tp.x < 0 || tp.x > W) errs.push('target bubble off screen sideways, x=' + tp.x);
         if (tb.glyph !== target.glyph) errs.push('target glyph mismatch');
       }
