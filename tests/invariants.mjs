@@ -341,6 +341,7 @@ function otherBubble(bpp) {
     if (key === 'C') {           // C is always missed twice before it is found
       for (let w = 0; w < 2; w++) { const o = otherBubble(env.bpp); if (o) tapBubble(env.bpp, o); runFor(env, 1.6); }
     }
+    runFor(env, 3);              // a child needs a few seconds to look for it (the next letter comes from bubbles already on screen)
     const t2 = targetBubble(env.bpp);
     if (t2) tapBubble(env.bpp, t2);
     runFor(env, 0.3);
@@ -736,21 +737,63 @@ function passGate(env) {
   }
   expect(sawUpcoming === trials, 'the bubble rising from the bottom was not used as the target');
 
-  // low bubbles on screen are used, and so is the bubble coming from the bottom
-  const picked = { onScreen: 0, upcoming: 0 };
-  for (let seed = 1; seed <= 120; seed++) {
-    const r = nextAfterPop(seed, [0.85, 0.8, 0.75]);
-    if (r.key === r.upcoming) picked.upcoming++;
-    else if (r.keysOnScreen.some((o) => o.key === r.key)) picked.onScreen++;
-    else fail(`asked for ${r.key}, which was neither on screen nor next from the bottom`);
-  }
-  expect(picked.onScreen > 20 && picked.upcoming > 5, `expected both kinds to be chosen, got ${JSON.stringify(picked)}`);
-
-  // an on-screen bubble is chosen without any bubble appearing or disappearing
+  // bubbles that are fully on screen and catchable are used; the one rising from the bottom is only a last resort
   {
-    const r = nextAfterPop(5, [0.85, 0.8, 0.75]);
-    const onScreen = r.bpp.state().bubbles.filter((b) => r.bpp.isLive(b) && b.key === r.key);
-    expect(onScreen.length === 1 || r.key === r.upcoming, 'the chosen on-screen bubble should be the one that is already there');
+    const picked = { onScreen: 0, upcoming: 0 };
+    for (let seed = 1; seed <= 120; seed++) {
+      const r = nextAfterPop(seed, [0.6, 0.45]);
+      if (r.key === r.upcoming) picked.upcoming++;
+      else if (r.keysOnScreen.some((o) => o.key === r.key)) picked.onScreen++;
+      else fail(`asked for ${r.key}, which was neither on screen nor next from the bottom`);
+    }
+    expect(picked.onScreen === 120 && picked.upcoming === 0, `with catchable bubbles on screen, only they should be asked for: ${JSON.stringify(picked)}`);
+  }
+
+  // a bubble that is only partly on screen (just rising in) is not asked for while a fully visible one exists
+  {
+    const st0 = freshGame({ letters: 'ABCDEFGH' }, { seed: 4 }).bpp.state();
+    const lowestFullyVisible = 1 - st0.R / st0.H;           // centre height (0 = top, 1 = bottom edge) where the bottom edge of a bubble reaches the screen edge
+    let sawPartial = 0, sawVisible = 0;
+    for (let seed = 1; seed <= 80; seed++) {
+      const env2 = freshGame({ letters: 'ABCDEFGH' }, { seed });
+      const st = env2.bpp.state();
+      const live = st.bubbles.filter(env2.bpp.isLive);
+      const tb = live.find((b) => b.key === st.target.key);
+      const [partial, visible] = live.filter((b) => b !== tb);
+      tb.ny = 0.9; tb.speed = 1;
+      partial.ny = lowestFullyVisible + 0.08; partial.speed = 1;      // half way in
+      visible.ny = lowestFullyVisible - 0.15; visible.speed = 1;
+      const partialKey = partial.key, visibleKey = visible.key;
+      tapBubble(env2.bpp, tb);
+      const k = env2.bpp.state().target.key;
+      if (k === partialKey) sawPartial++;
+      if (k === visibleKey) sawVisible++;
+    }
+    expect(sawPartial === 0, `a bubble still rising in was asked for ${sawPartial} times`);
+    expect(sawVisible === 80, `the fully visible bubble should always be asked for, got ${sawVisible}/80`);
+  }
+
+  // higher bubbles are picked more often than lower ones (as long as both are catchable)
+  {
+    let high = 0, low = 0;
+    for (let seed = 1; seed <= 400; seed++) {
+      const env2 = freshGame({ letters: 'ABCDEFGH' }, { seed });
+      const st = env2.bpp.state();
+      const live = st.bubbles.filter(env2.bpp.isLive);
+      const tb = live.find((b) => b.key === st.target.key);
+      const [a, b2] = live.filter((b) => b !== tb);
+      tb.ny = 0.9; tb.speed = 1;
+      a.ny = 0.7; a.speed = 1;      // low in the zone
+      b2.ny = 0.28; b2.speed = 1;   // high in the zone, but still with time left
+      if (env2.bpp.secondsCatchable(b2) < env2.bpp.minCatchSeconds) { fail('test setup: the high bubble should still be catchable'); break; }
+      const lowKey = a.key, highKey = b2.key;
+      tapBubble(env2.bpp, tb);
+      const k = env2.bpp.state().target.key;
+      if (k === lowKey) low++; else if (k === highKey) high++;
+    }
+    expect(high + low === 400, 'only the two catchable bubbles should have been asked for');
+    expect(high > low * 1.5, `the higher bubble should be picked clearly more often: high ${high}, low ${low}`);
+    expect(low > 40, `the lower bubble should still sometimes be picked: ${low}`);
   }
 
   // the cutoff moves with bubble speed: faster means fewer bubbles qualify, slower means more
@@ -797,7 +840,11 @@ function passGate(env) {
       if (!t) { runFor(g, 0.5); n--; continue; }
       tapBubble(g.bpp, t);
       const t2 = targetBubble(g.bpp);
-      if (t2) worst = Math.min(worst, g.bpp.secondsCatchable(t2));
+      if (t2) {
+        worst = Math.min(worst, g.bpp.secondsCatchable(t2));
+        const gs = g.bpp.state();
+        if (g.bpp.pos(t2).y > gs.H - gs.R + 1e-6) fail(`at speed ${speed}, asked for a bubble that was still rising in`);
+      }
       runFor(g, 0.3 + (n % 7) * 0.4);
     }
     expect(worst >= g.bpp.minCatchSeconds - 1e-6, `at speed ${speed}, a target with only ${worst.toFixed(2)}s left was asked for`);

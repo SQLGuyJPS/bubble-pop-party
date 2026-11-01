@@ -561,12 +561,14 @@ var BUBBLE_HEIGHT_CAP = 0.55;   // ...but never taller than this share of screen
 var GLYPH_RATIO = 0.28 / 0.32;  // font size / bubble diameter (cap height ~ 20% of width)
 var SPAWN_DEPTH = 0.3;          // new bubbles start with their centre this many radii below the bottom edge,
                                 // so any of them can become the target and still be mostly visible
-/* Which bubbles may be asked for next. After a pop, the new target is picked from the bubbles already on
-   screen plus the next one due to rise from the bottom. A bubble already on screen only counts if it will
-   stay catchable for at least MIN_CATCH_SECONDS more, so the child is never asked for something that is
-   about to float away. The distance this covers depends on bubble size and speed (see secondsCatchable). */
-var MIN_CATCH_SECONDS = 6;      // about 3 s for the cheer and the new prompt to be spoken, plus 3 s to spot and tap it
+/* Which bubble is asked for next. After a pop, the new target is picked from bubbles that are already fully
+   on screen and will stay catchable for at least MIN_CATCH_SECONDS more, so the child is never sent to a bubble
+   that has only just arrived at the bottom or one that is about to float away. How high up that zone reaches
+   depends on bubble size and speed (see secondsCatchable). Higher bubbles in the zone are somewhat more likely
+   to be picked (HIGH_BIAS). Only when nothing qualifies does the next bubble rising from the bottom get used. */
+var MIN_CATCH_SECONDS = 4;      // about 2 s for the new prompt to be spoken, plus 2 s to spot and tap it
 var MIN_VISIBLE_FRACTION = 0.25;// a bubble is "gone" once less than this share of its height is still on screen
+var HIGH_BIAS = 3;              // the highest bubble in the zone is (1 + this) times as likely as the lowest
 var MAX_PARTICLES = 60;         // confetti cap so older tablets keep up
 var HINT_WRONG_POPS = 2;        // wrong pops before the target gently glows
 var HINT_IDLE_SECONDS = 15;     // ...or this long with no taps
@@ -1236,6 +1238,16 @@ function secondsCatchable(b) {
   var pxPerSecond = RISE_SPEED * settings.speed * b.speed * H;
   return (b.ny * H - goneY()) / pxPerSecond;
 }
+/* Bubbles are used up quickly, so most of the ones on screen have only just arrived. To keep the next letter
+   from nearly always being at the bottom, the higher a bubble is within the allowed zone, the more likely
+   it is to be picked: the highest allowed bubble is (1 + HIGH_BIAS) times as likely as the lowest. */
+function heightBias(b) {
+  var top = goneY() + MIN_CATCH_SECONDS * RISE_SPEED * settings.speed * b.speed * H;   // highest allowed centre
+  var bottom = H - R;                                                                   // lowest allowed centre
+  var t = bottom > top ? (bottom - b.ny * H) / (bottom - top) : 0;                      // 0 lowest .. 1 highest
+  return 1 + HIGH_BIAS * Math.max(0, Math.min(1, t));
+}
+function fullyOnScreen(b) { return b.ny * H <= H - R; }
 function inBounds(b) { return isLive(b) && secondsCatchable(b) >= MIN_CATCH_SECONDS; }
 
 /* =====================================================================
@@ -1245,19 +1257,24 @@ function chooseTarget() {
   var live = bubbles.filter(isLive);
   var p = pool();
   var existing = null;
-  // Candidates: bubbles on screen that are still low enough to catch, plus the next one rising from the bottom.
-  // Never the item that was just popped.
-  var cands = [];
+  // Candidates: bubbles that are already fully on screen and still high enough to catch (never the item
+  // that was just popped). A bubble that has only just started to rise in, or one still waiting below the
+  // screen, is not used unless nothing else qualifies: the child should be sent to a bubble she has had a
+  // moment to see, not to whatever just arrived.
+  var cands = [], weightOf = {};
   for (var c = 0; c < live.length; c++) {
     var lk = live[c].key;
-    if (lk !== lastTarget && cands.indexOf(lk) < 0 && p.indexOf(lk) >= 0 && inBounds(live[c])) cands.push(lk);
+    if (lk !== lastTarget && cands.indexOf(lk) < 0 && p.indexOf(lk) >= 0 && inBounds(live[c]) && fullyOnScreen(live[c])) {
+      cands.push(lk);
+      weightOf[lk] = targetWeight(lk) * heightBias(live[c]);
+    }
   }
-  if (upcoming && upcoming !== lastTarget && cands.indexOf(upcoming) < 0 && p.indexOf(upcoming) >= 0 &&
-      freeToAppear(upcoming)) cands.push(upcoming);
+  // Last resort: the next bubble due to rise from the bottom.
+  if (!cands.length && upcoming && upcoming !== lastTarget && p.indexOf(upcoming) >= 0 && freeToAppear(upcoming)) cands.push(upcoming);
   var conflict = false;
   var k;
   if (cands.length) {
-    k = weightedPick(cands);
+    k = weightedPick(cands, weightOf);
   } else {
     // nothing suitable (only possible with a tiny item list): pick from the whole pool like a fresh game,
     // with nothing that looks like a bubble already on screen
@@ -1300,12 +1317,13 @@ function sparklesWanted() {
 }
 /* Items that were missed this session come up more often */
 function targetWeight(k) { return 1 + 2 * Math.min(missed[k] || 0, 3); }
-function weightedPick(list) {
+function weightedPick(list, weights) {
   var total = 0, i;
-  for (i = 0; i < list.length; i++) total += targetWeight(list[i]);
+  var w = function (k) { return weights && weights[k] ? weights[k] : targetWeight(k); };
+  for (i = 0; i < list.length; i++) total += w(list[i]);
   var roll = Math.random() * total;
   for (i = 0; i < list.length; i++) {
-    roll -= targetWeight(list[i]);
+    roll -= w(list[i]);
     if (roll < 0) return list[i];
   }
   return list[list.length - 1];
