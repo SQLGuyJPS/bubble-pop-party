@@ -531,10 +531,10 @@ function passGate(env) {
   expect(!env.bpp.state().muted, '"Hear it" stayed muted');
   for (let t = 0; t < 4000; t += 50) env.advance(50);   // small steps, so chained timers keep their real spacing
   const heard = env.speech.texts.slice(-2);
-  expect(heard[0] === 'Great!' && heard[1] === 'ey is for apple.', 'the voice test said: ' + heard.join(' | '));
+  expect(heard[0] === 'Great!' && heard[1] === 'eigh is for apple.', 'the voice test said: ' + heard.join(' | '));
   expect(!env.speech.texts.some((x) => /Yay/.test(x)), 'the cheer still says Yay');
   const gap = env.speech.times[env.speech.times.length - 1] - env.speech.times[env.speech.times.length - 2];
-  expect(gap >= 1500 + 400, 'no pause between "Great!" and "ay is for apple" (gap ' + gap + ' ms)');
+  expect(gap >= 1500 + 400, 'no pause between "Great!" and "eigh is for apple" (gap ' + gap + ' ms)');
   expect(env.speech.maxQueued <= 1, 'the two parts of the cheer were queued together');
   expect(env.speech.volumes[env.speech.volumes.length - 1] === 0.6, 'the volume setting did not reach the voice');
   console.log(`${failures === before ? 'ok  ' : 'FAIL'} saving settings (and surviving bad storage)`);

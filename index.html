@@ -652,7 +652,7 @@ loadSettings();
    shown beside the big character.
    ===================================================================== */
 var LETTERS = {
-  A: { say: 'ey',     word: 'apple',     pic: '🍎' },   // "ay" was read like "eye"
+  A: { say: 'eigh',    word: 'apple',     pic: '🍎' },   // "ay" and "ey" were misread; "eigh" is a long A
   B: { say: 'bee',    word: 'ball',      pic: '⚽' },
   C: { say: 'see',    word: 'cat',       pic: '🐱' },
   D: { say: 'dee',    word: 'dog',       pic: '🐶' },
@@ -749,7 +749,7 @@ function textFor(key) {
   if (p[0] === 'voicetest') return textFor('cheer:A');   // what the parent hears from "Hear it": the tricky letter A
   return '';
 }
-/* The computer voice says a cheer in two pieces with a short pause between: "Great!" ... "ay is for apple."
+/* The computer voice says a cheer in two pieces with a short pause between: "Great!" ... "eigh is for apple."
    (A recording of a cheer is one file, so the pause is whatever you leave when you record it.) */
 var CHEER_PAUSE_MS = 500;
 function speechPieces(clip) {
