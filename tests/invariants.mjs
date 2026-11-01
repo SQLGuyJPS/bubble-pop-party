@@ -192,8 +192,21 @@ function run(scn, seed, withSpeech) {
       } else {
         bpp.tap(rand() * st.W, rand() * st.H);   // anywhere, maybe empty
       }
-      const now = bpp.state().target;
-      if (now !== lastSimTarget) { lastSimTarget = now; targets.push(now.key); seen.add(now.key); }
+      const after = bpp.state();
+      const now = after.target;
+      if (now !== lastSimTarget) {
+        lastSimTarget = now; targets.push(now.key); seen.add(now.key);
+        // if the new target is already on screen it must still be catchable; otherwise it rises from the bottom
+        // (the strict "must be the planned next bubble" check is in the focused tests below, because a fuzzer
+        // that pops 4 bubbles in one frame can legitimately use up a tiny item list)
+        if (bpp.pool().length >= 4) {
+          const tb = after.bubbles.find((b) => bpp.isLive(b) && b.key === now.key);
+          if (tb) {
+            const left = bpp.secondsCatchable(tb);
+            if (left < bpp.minCatchSeconds - 1e-6) fail(`${scn.name} seed ${seed}: asked for ${now.key} with only ${left.toFixed(2)}s left on screen`);
+          }
+        }
+      }
     }
     const errs = bpp.check();
     if (errs.length) errs.forEach((e) => fail(`${scn.name} seed ${seed} step ${i}: ${e}`));
@@ -688,6 +701,110 @@ function passGate(env) {
   }
   await swTests();
   console.log(`${failures === before ? 'ok  ' : 'FAIL'} icons, manifest and offline worker`);
+}
+
+// ---------- which bubble is asked for next ----------
+{
+  const before = failures;
+
+  // Set up a game where the three other bubbles sit at chosen heights (1 = bottom edge, 0 = top edge), pop the
+  // target, and report which key became the target next.
+  function nextAfterPop(seed, heights, extra = {}) {
+    const env = freshGame({ letters: 'ABCDEFGH', ...extra }, { seed });
+    const bpp = env.bpp;
+    const st = bpp.state();
+    const live = st.bubbles.filter(bpp.isLive);
+    const tb = live.find((b) => b.key === st.target.key);
+    const others = live.filter((b) => b !== tb);
+    others.forEach((b, i) => { b.ny = heights[i % heights.length]; b.speed = 1; });
+    tb.ny = 0.9; tb.speed = 1;
+    const upcoming = bpp.state().upcoming;
+    const keysOnScreen = others.map((b) => ({ key: b.key, left: bpp.secondsCatchable(b) }));
+    tapBubble(bpp, tb);
+    return { key: bpp.state().target.key, upcoming, keysOnScreen, bpp };
+  }
+
+  // bubbles close to the top are never asked for; the next one from the bottom is always available
+  let sawUpcoming = 0, trials = 0;
+  for (let seed = 1; seed <= 60; seed++) {
+    const r = nextAfterPop(seed, [0.12, 0.08]);
+    trials++;
+    expect(r.keysOnScreen.every((o) => o.left < r.bpp.minCatchSeconds), 'test setup: the high bubbles should be out of bounds');
+    expect(!r.keysOnScreen.some((o) => o.key === r.key), `asked for ${r.key}, a bubble about to leave through the top`);
+    expect(r.key === r.upcoming, `with every bubble too high, expected the next bubble from the bottom (${r.upcoming}) but got ${r.key}`);
+    if (r.key === r.upcoming) sawUpcoming++;
+  }
+  expect(sawUpcoming === trials, 'the bubble rising from the bottom was not used as the target');
+
+  // low bubbles on screen are used, and so is the bubble coming from the bottom
+  const picked = { onScreen: 0, upcoming: 0 };
+  for (let seed = 1; seed <= 120; seed++) {
+    const r = nextAfterPop(seed, [0.85, 0.8, 0.75]);
+    if (r.key === r.upcoming) picked.upcoming++;
+    else if (r.keysOnScreen.some((o) => o.key === r.key)) picked.onScreen++;
+    else fail(`asked for ${r.key}, which was neither on screen nor next from the bottom`);
+  }
+  expect(picked.onScreen > 20 && picked.upcoming > 5, `expected both kinds to be chosen, got ${JSON.stringify(picked)}`);
+
+  // an on-screen bubble is chosen without any bubble appearing or disappearing
+  {
+    const r = nextAfterPop(5, [0.85, 0.8, 0.75]);
+    const onScreen = r.bpp.state().bubbles.filter((b) => r.bpp.isLive(b) && b.key === r.key);
+    expect(onScreen.length === 1 || r.key === r.upcoming, 'the chosen on-screen bubble should be the one that is already there');
+  }
+
+  // the cutoff moves with bubble speed: faster means fewer bubbles qualify, slower means more
+  function cutoffHeight(env, speedSetting) {
+    const bpp = env.bpp;
+    bpp.setSettings({ speed: speedSetting });
+    const b = bpp.state().bubbles[0];
+    b.speed = 1;
+    let lo = 0, hi = 2;                        // the highest position (ny) that still has enough time left
+    for (let i = 0; i < 40; i++) {
+      const mid = (lo + hi) / 2;
+      b.ny = mid;
+      if (bpp.secondsCatchable(b) >= bpp.minCatchSeconds) hi = mid; else lo = mid;
+    }
+    return hi;
+  }
+  let env = freshGame();
+  const slow = cutoffHeight(env, 0.6), normal = cutoffHeight(env, 1), fast = cutoffHeight(env, 1.5);
+  expect(slow < normal && normal < fast, `cutoff should sit lower on the screen as bubbles speed up: ${slow.toFixed(2)} ${normal.toFixed(2)} ${fast.toFixed(2)}`);
+  expect(slow > 0 && fast < 1, 'the cutoff should be somewhere on the screen at every speed');
+
+  // ...and with bubble size: at the same screen height, a bigger bubble has more time before it is gone
+  const small = freshGame(); small.bpp.resize(600, 800);
+  const big = freshGame();   big.bpp.resize(1200, 800);
+  const bs = small.bpp.state(), bb = big.bpp.state();
+  expect(bb.R > bs.R, 'test setup: expected a bigger bubble on the wider screen');
+  const probe = (e) => { const b = e.bpp.state().bubbles[0]; b.ny = 0.2; b.speed = 1; return e.bpp.secondsCatchable(b); };
+  expect(probe(big) > probe(small), 'a bigger bubble should stay catchable longer at the same height');
+
+  // when the next bubble comes from the bottom it still shows up on screen right away
+  env = freshGame({ letters: 'ABCDEFGH' }, { seed: 9 });
+  for (let n = 0; n < 12; n++) {
+    const r = nextAfterPop(100 + n, [0.1]);
+    r.bpp.step(1 / 60);
+    expect(!!targetBubble(r.bpp), 'the new target did not start rising');
+  }
+
+  // a long game: nothing asked for ever has less than the minimum time left, at any speed
+  for (const speed of [0.6, 1, 1.5]) {
+    const g = freshGame({ speed, mode: 'both' }, { seed: 21 + speed * 10 });
+    let worst = Infinity;
+    for (let n = 0; n < 150; n++) {
+      const t = targetBubble(g.bpp);
+      if (!t) { runFor(g, 0.5); n--; continue; }
+      tapBubble(g.bpp, t);
+      const t2 = targetBubble(g.bpp);
+      if (t2) worst = Math.min(worst, g.bpp.secondsCatchable(t2));
+      runFor(g, 0.3 + (n % 7) * 0.4);
+    }
+    expect(worst >= g.bpp.minCatchSeconds - 1e-6, `at speed ${speed}, a target with only ${worst.toFixed(2)}s left was asked for`);
+    expect(g.bpp.check().length === 0, 'rules broken in the long game: ' + g.bpp.check().join('; '));
+  }
+
+  console.log(`${failures === before ? 'ok  ' : 'FAIL'} next letter comes from catchable bubbles or the one rising from the bottom`);
 }
 
 console.log(`\n${totalRuns} simulated games, ${failures} problems found.`);

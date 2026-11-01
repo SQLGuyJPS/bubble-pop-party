@@ -28,6 +28,11 @@ Add `?debug` to the address (<http://localhost:8000/?debug>) to switch on test h
 - Up to 4 bubbles float up. The one to find is always shown at the top with a picture, and a speaker
   button says it again.
 - Popping the right bubble: pop sound, confetti, a spoken cheer, a star. Every 10 stars is a bigger party.
+- The next letter is always one of the bubbles she can see (or the next one rising from the bottom), never a
+  bubble that is about to float away. A bubble on screen counts only if it will stay catchable for at least
+  6 more seconds (`MIN_CATCH_SECONDS` in `index.html`). How high up the screen that is depends on the bubble
+  size and the speed setting: bigger bubbles take longer to leave, and Fast shrinks the area while Slow
+  widens it. If no bubble on screen qualifies, the next one rising from the bottom is asked for.
 - Popping a wrong bubble: it wobbles and the voice says what it was and what to find. No buzzers, no score loss.
 - If she hasn't found it after 2 wrong pops, or after about 15 quiet seconds, the target bubble glows and
   pulses. While nobody taps, the question is repeated about every 8 seconds.
@@ -70,7 +75,7 @@ node tests/invariants.mjs
 ```
 
 This plays about 200 simulated games with random taps, rotations and resizes, then checks specific
-features. It checks that: the target bubble is always on screen, there are never more than 4 bubbles,
+features. It checks that: the target bubble is always on screen, the next letter is never a bubble about to float away, there are never more than 4 bubbles,
 there are no duplicates or look-alike characters (b/d, p/q, m/w, n/u, 6/9, O/0, I/l/1) together, the same
 target never repeats straight away, wrong pops never change the target, the voice never queues more than
 one line, hints and repeat prompts happen on time, confetti stays under 60 pieces, missed letters come up
