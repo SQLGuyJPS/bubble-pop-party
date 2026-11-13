@@ -47,11 +47,25 @@ saved its settings. Say so in the pull request and the README.
 
 ## Commands
 
-<!-- Milestone 5 replaces this section with the npm commands and the new layout. -->
-- `node tests/invariants.mjs`: all checks.
-- `node tools/update-sw.mjs`: refresh the offline file list and version. Run it before every push.
-- `node tools/update-audio.mjs`: connect recordings in `audio/` (`--script` prints the words to record).
-- `python -m http.server 8000`: run locally. Add `?debug` for the test hooks.
+- `npm install`: once, after cloning (Node 22, see `.nvmrc`).
+- `npm test`: type check, build, then every check. Must end with `0 problems found`.
+- `npm run dev`: builds, serves `dist/` at http://localhost:8000 and rebuilds on change. Add `?debug` for the test
+  hooks. No offline helper in dev.
+- `npm run build`: production build into `dist/` (never committed). `npm run check`: type check only.
+- `node tests/run.mjs --update-spoken-sample`: only when a change to what the voice says is intended; review the diff
+  of `tests/fixtures/spoken-sample.txt`.
+- `node tools/update-audio.mjs [--script] [--all]`: which recordings exist; the words to record.
+- `node tests/screens.mjs dist <folder>`: screenshots at iPad size (needs Playwright; not part of `npm test`).
+
+## Layout
+
+- `src/` TypeScript modules: `config` (constants, defaults, speed limits), `state` (the one shared, changing state
+  object), `items`, `settings`, `speech`, `sound`, `targets`, `draw`, `game`, `banner`, `parent`, `debug`, `dom`,
+  `recordings`, `main` (start-up), `sw` (offline helper), `styles.css`. Keep each under about 400 lines.
+- `tools/build.mjs` builds `dist/`; the recordings list and the offline file list and version are made there.
+- `tests/harness.mjs` is the fake browser; `tests/run.mjs` runs one file per area. The tests load `dist/game.js`
+  and talk to the game only through the `window.__bpp` hooks in `src/debug.ts`.
+- `perf/` is the speed test page. `index.html` and `sw.js` must stay at the site root.
 
 ## Writing docs
 

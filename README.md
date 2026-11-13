@@ -3,23 +3,28 @@
 A toddler game for learning letters and numbers. Colorful bubbles float up, each with one huge
 character. The game shows and says which one to find, and the child pops it.
 
-Plain HTML, CSS and JavaScript. No frameworks, no network calls, no tracking, no ads.
+Written in TypeScript with no frameworks. No network calls, no tracking, no ads.
 
-> Status: **Milestone 4** (icons, offline install, GitHub Pages deploy). All four milestones are done.
+> Status: **Milestone 5** (TypeScript, split into files, automatic publishing). See `docs/ROADMAP.md` for what comes
+> next.
 
 ## Run it on your computer
 
-You need Python (already installed on this computer). In the project folder, run:
+You need **Node.js 22** or newer (<https://nodejs.org>, the "LTS" download). Once, in the project folder, run:
 
 ```bash
-python -m http.server 8000
+npm install
 ```
 
-Then open <http://localhost:8000> in your browser and press the big Play button.
-Press `Ctrl+C` in the terminal to stop the server.
+Then, every time you want to play or try a change:
 
-You can also just double-click `index.html`. The game works that way too; only the offline
-install needs a web address (the server, or GitHub Pages).
+```bash
+npm run dev
+```
+
+Open <http://localhost:8000> in your browser and press the big Play button. When you save a change, the game is
+rebuilt; reload the page to see it. Press `Ctrl+C` in the terminal to stop. (A new recording in `audio/` needs a
+stop and start.)
 
 Add `?debug` to the address (<http://localhost:8000/?debug>) to switch on test hooks.
 
@@ -30,7 +35,7 @@ Add `?debug` to the address (<http://localhost:8000/?debug>) to switch on test h
 - Popping the right bubble: pop sound, confetti, a spoken cheer, a star. Every 10 stars is a bigger party.
 - The next letter is always a bubble she can already see, never one that has only just arrived at the bottom.
   A bubble qualifies when it is fully on screen and will stay catchable for at least 4 more seconds
-  (`MIN_CATCH_SECONDS` in `index.html`). How high up the screen that reaches depends on the bubble size and the
+  (`MIN_CATCH_SECONDS` in `src/config.ts`). How high up the screen that reaches depends on the bubble size and the
   speed setting: bigger bubbles take longer to leave, Fast shrinks the area and Slow widens it. Bubbles higher
   up are somewhat more likely to be picked than low ones (`HIGH_BIAS`). Only when nothing qualifies, which
   happens if she taps faster than bubbles can rise into view, is the next bubble rising from the bottom used.
@@ -56,6 +61,7 @@ Settings (saved on the device; if the browser blocks saving, the game just uses 
 | Capital or small letters | ABC, abc, or both |
 | Bubble speed | Slow, Normal, Fast |
 | Volume | 20% to 100% |
+| Letter at the top | Show or Hide (default Hide). Hide gives only the picture, the word and the spoken name |
 | Hint sparkles | Auto, Always, Off |
 | Computer voice | Pick a voice and press "Hear it" (it says "Great!", a short pause, then "eigh is for apple.") |
 | Play time | No limit, 5, 10 or 15 minutes |
@@ -64,64 +70,71 @@ When the play time is up she sees a friendly goodbye screen and the game stops. 
 parent gate, and then pressing Done in settings begins a new session (stars start over).
 Changing letters or numbers gives fresh bubbles when you press Done.
 
+Changing a default never changes a device that already saved its settings. For example, "Letter at the top" became
+Hide by default in Milestone 5, but an iPad that had saved Show keeps showing the letter until you pick Hide once.
+
+The word under the picture is written like the letter on the bubble to find: if the bubble shows **A**, the word is
+**APPLE**; if it shows **a**, the word is **apple**. With "both", it changes from letter to letter.
+
 ## Your own voice recordings
 
 The computer voice can sound rushed or unclear. Record your own clips and the game uses them instead.
-See **[AUDIO-GUIDE.md](AUDIO-GUIDE.md)** for the words to say, the file names, and the one command to run.
+See **[AUDIO-GUIDE.md](AUDIO-GUIDE.md)** for the words to say and the file names.
 
 ## Check the game's rules automatically
 
 ```bash
-node tests/invariants.mjs
+npm test
 ```
 
-This plays about 200 simulated games with random taps, rotations and resizes, then checks specific
-features. It checks that: the target bubble is always on screen, the next letter is never a bubble that has just arrived or is about to float away, there are never more than 4 bubbles,
-there are no duplicates or look-alike characters (b/d, p/q, m/w, n/u, 6/9, O/0, I/l/1) together, the same
-target never repeats straight away, wrong pops never change the target, the voice never queues more than
-one line, hints and repeat prompts happen on time, confetti stays under 60 pieces, missed letters come up
-more, mute is silent, recordings play one at a time with a fallback to the computer voice, the parent gate
-needs a full 3-second hold and the right sum, settings are remembered (and survive blocked or damaged
-storage), and the play-time limit ends the session until a parent restarts it. It also checks that the icons are
-the right size, that every file (including recordings) is in the offline list, that nothing uses a path starting with
-`/`, that the game makes no network calls, and that the offline helper installs, updates and works with no
-connection. It prints
-`0 problems found` when everything is fine.
+This checks the TypeScript, builds the game, then plays about 200 simulated games with random taps, rotations and
+resizes, and checks specific features. It checks that: the target bubble is always on screen, the next letter is
+never a bubble that has just arrived or is about to float away, there are never more than 4 bubbles, there are no
+duplicates or look-alike characters (b/d, p/q, m/w, n/u, 6/9, O/0, I/l/1) together, the same target never repeats
+straight away, wrong pops never change the target, the voice never queues more than one line, hints and repeat
+prompts happen on time, confetti stays under 60 pieces, missed letters come up more, mute is silent, recordings play
+one at a time with a fallback to the computer voice, the parent gate needs a full 3-second hold and the right sum,
+settings are remembered (and survive blocked or damaged storage), the play-time limit ends the session until a
+parent restarts it, and the word at the top matches the bubble's capital or small letter. It also checks that the
+voice says exactly what it said before (`tests/fixtures/spoken-sample.txt`), that the icons are the right size, that
+every file (including recordings) is in the offline list, that nothing uses a path starting with `/`, that the game
+makes no network calls, that it stays inside the speed limits, and that the offline helper installs, updates and
+works with no connection. It prints `0 problems found` when everything is fine.
+
+The same checks run on GitHub for every push and pull request.
 
 ## Files
 
 | File | What it is |
 | --- | --- |
-| `index.html` | The whole game (HTML, CSS and JavaScript in one file) |
+| `index.html` | The page: buttons, banner, parent screens (no code) |
+| `src/` | The game's code in TypeScript, one file per area (settings, letters, speech, sound, drawing...), and `styles.css` |
+| `src/sw.ts` | The offline helper (see "How the offline copy works") |
 | `manifest.webmanifest` | Tells the iPad the game's name, icon and colors |
-| `sw.js` | The offline helper (see "How the offline copy works") |
 | `icons/` | The app icons (180, 192 and 512 pixels) |
 | `fonts/` | The Andika font and its license (SIL Open Font License) |
 | `audio/` | Your own recordings (see AUDIO-GUIDE.md) |
-| `tools/update-sw.mjs` | Run before every push: refreshes the offline file list and version (not part of the game itself) |
+| `perf/` | The speed test page (see "Speed test") |
+| `tools/build.mjs` | Builds the game into `dist/` (`npm run build`; `npm run dev` also serves it) |
+| `tools/update-audio.mjs` | Lists which recordings you have, and the words to record |
 | `tools/make-icons.mjs` | Draws the icon PNGs |
-| `tools/update-audio.mjs` | Connects your recordings to the game |
-| `tests/invariants.mjs` | The automatic rules check (not part of the game) |
+| `tests/` | The automatic rules check (`npm test`), one file per area |
+| `.github/workflows/deploy.yml` | Runs the checks on GitHub, and publishes the game when `main` changes |
+| `dist/` | The built game. Made by the build, never edited or committed |
 
 ## Changing what the voice says
 
-Open `index.html` and find the `LETTERS` list. Each letter has a `say` spelling (for example
+Open `src/items.ts` and find the `LETTERS` list. Each letter has a `say` spelling (for example
 `B` is `bee`) that the computer voice reads aloud, plus a word (`ball`) and a picture. If a
-letter sounds wrong on your tablet, change its `say` text and reload. Recordings (above) are the better fix.
+letter sounds wrong on your tablet, change its `say` text and reload (with `npm run dev` running). Recordings (above) are the better fix.
 
 ## Putting it on the iPad (GitHub Pages)
 
 GitHub can host the game for free. Once it is online, the iPad opens it like an app and it keeps working
 with no internet.
 
-### One-time setup: turn on GitHub Pages
-
-1. Open <https://github.com/SQLGuyJPS/bubble-pop-party/settings/pages> (sign in if asked).
-2. Under **Build and deployment**, set **Source** to **Deploy from a branch**.
-3. Under **Branch**, choose **main** and the folder **/ (root)**, then press **Save**.
-4. Wait 1 to 2 minutes and reload that page. A box says **Your site is live at** and shows the address:
-
-   **<https://sqlguyjps.github.io/bubble-pop-party/>**
+The address is **<https://sqlguyjps.github.io/bubble-pop-party/>**. GitHub publishes it by itself whenever `main`
+changes (Pages is set to deploy from GitHub Actions).
 
 ### One-time setup: add it to the iPad's home screen
 
@@ -135,33 +148,32 @@ with no internet.
 
 ### Sending an update to the iPad
 
-Every time you change the game (new recordings, a changed letter, a fix), do these steps in the project folder:
+Every change reaches the iPad the same way:
 
-```bash
-node tools/update-sw.mjs
-```
+1. Check it on your computer:
 
-This gives the game a new version number. That number is what makes the iPad download the new files.
-If you added recordings, `node tools/update-audio.mjs` does this step for you.
+   ```bash
+   npm test
+   ```
 
-```bash
-node tests/invariants.mjs
-```
+   It should end with `0 problems found`.
+2. Commit and push your change, then open a pull request into `main` and merge it once its checks are green
+   (or push straight to `main` if you haven't protected it):
 
-Check that it ends with `0 problems found`.
+   ```bash
+   git add -A
+   git commit -m "Describe what you changed"
+   git push
+   ```
 
-```bash
-git add -A
-git commit -m "Describe what you changed"
-git push
-```
-
-Wait about a minute for GitHub to publish. Then on the iPad, **open the game with Wi-Fi on**. It quietly downloads the
-new version in the background. **Close it (swipe it away in the app switcher) and open it again** to play the
-new version.
+3. GitHub runs the checks again. If they pass, it publishes the game by itself; if anything fails, nothing is
+   published and the iPad keeps the old version. You can watch this on the repository's **Actions** tab.
+4. A minute or two later, on the iPad, **open the game with Wi-Fi on**. It quietly downloads the new version in the
+   background. **Close it (swipe it away in the app switcher) and open it again** to play the new version.
 
 To check which version the iPad has: pass the parent gate, open Settings, and look at the bottom for
-**Game version: xxxxxxxxxx**. It should match the one in `sw.js` (the `CACHE_VERSION` line) on your computer.
+**Game version: xxxxxxxxxx**. The same version is printed at the end of `npm run build` and in the published
+`sw.js`.
 
 ### If the iPad still shows the old version
 
@@ -173,20 +185,26 @@ To check which version the iPad has: pass the parent gate, open Settings, and lo
 
 ### Good to know
 
-- Pages can only show files that are pushed, so run the push steps above; changes on your computer alone do not
-  reach the iPad.
-- While you work on your computer, `python -m http.server` also installs the offline copy in your browser.
-  If a change doesn't show up on `localhost:8000`, run `node tools/update-sw.mjs` and reload twice (or open the
-  page in a private window).
-- Opening `index.html` by double-clicking works too. It just skips the offline copy.
+- Only what is merged into `main` reaches the iPad; changes on your computer alone do not.
+- `npm run dev` never installs the offline copy, so on your computer you always see your latest change.
+
+## Speed test
+
+The page <https://sqlguyjps.github.io/bubble-pop-party/perf/> finds how many moving things the iPad can draw before
+the motion stops being smooth, using the game's own drawing code. It is not linked from the game and not saved for
+offline use. To run it: charge the iPad, turn Low Power Mode off, open the page in Safari, tap **Start the speed
+test**, keep the iPad still for a few minutes, then take a screenshot of the results. The numbers set the speed
+limits in `docs/ROADMAP.md`.
 
 ## How the offline copy works
 
-`sw.js` is a small helper the browser runs in the background. It saves every file of the game (`index.html`, the
-font, the icons and your recordings) under a version name, and from then on serves the game from those saved
-files. `node tools/update-sw.mjs` lists the files and makes the version name from their contents, so a change to any
-file means a new version, and the old saved copy is deleted once the new one is ready. Everything uses relative paths,
-because GitHub Pages serves the game from a sub-folder (`/bubble-pop-party/`).
+The offline helper (`src/sw.ts`, published as `sw.js`) is a small program the browser runs in the background. It
+saves every file of the game (the page, its script and styles, the font, the icons and your recordings) under a
+version name, and from then on serves the game from those saved files. The build lists the files and makes the
+version name from their contents, so a change to any file means a new version, and the old saved copy is deleted once
+the new one is ready. It is always published as `sw.js` next to `index.html`, because the iPad only updates an
+installed helper from the same address. Everything uses relative paths, because GitHub Pages serves the game from a
+sub-folder (`/bubble-pop-party/`).
 
 Icons are drawn by `node tools/make-icons.mjs` (nothing to install). You only need that if you want to change the
 icon's look.

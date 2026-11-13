@@ -1,6 +1,6 @@
 # Milestone 5: TypeScript, split into files, automatic deploy
 
-Status: agreed, not started.
+Status: built. Still to do on the iPad: the update test (section 10) and the speed test (section 7).
 
 ## Goal
 

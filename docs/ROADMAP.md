@@ -6,7 +6,7 @@ the end of every one.
 
 | # | Milestone | Size | Status |
 | --- | --- | --- | --- |
-| 5 | TypeScript, split into files, automatic deploy | Large | Planned |
+| 5 | TypeScript, split into files, automatic deploy | Large | Built; waiting for the iPad test and speed test |
 | 6 | Record clips inside the game | Large | Planned |
 | 7 | Spell my name | Medium | Planned |
 | 8 | Counting | Medium | Planned |
@@ -302,8 +302,17 @@ stayed smooth up to about 1,100 moving SVGs. That game's limits, used here too:
 
 **How they apply here.** The SVG limits apply to anything drawn as SVG elements (the sticker book, theme scenery,
 pictures in the parent area). The bubbles and confetti are drawn on a `<canvas>`, which redraws everything every
-frame, so those numbers don't carry over. **The canvas has no limit yet.** Milestone 5 builds a speed test page that
-finds the iPad's breaking point for canvas drawing, and the canvas limits are set from that measurement.
+frame, so those numbers don't carry over. **The canvas has no limit yet.** Milestone 5 built a speed test page
+(<https://sqlguyjps.github.io/bubble-pop-party/perf/>, see the README) that finds the iPad's breaking point for canvas
+drawing, and the canvas limits are set from that measurement.
+
+| Canvas case (iPad 7th generation, measured with the speed test) | Breaking point | Limit chosen |
+| --- | --- | --- |
+| Plain bubbles, game size | not yet measured | |
+| Bubbles with hint glow and sparkles | not yet measured | |
+| Confetti pieces | not yet measured | |
+| Mix (1 bubble : 15 confetti) | not yet measured | |
+| Moving bubbles over 400 cached still ones | not yet measured | |
 
 **Design limits stay separate.** No more than 4 bubbles, for a toddler's clarity, no matter what the iPad could
 handle. The 60-piece confetti cap was set for speed. The speed test shows whether it can go higher. If it
