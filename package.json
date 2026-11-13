@@ -1,0 +1,20 @@
+{
+  "name": "bubble-pop-party",
+  "private": true,
+  "description": "A toddler game for learning letters and numbers by popping bubbles.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "node tools/build.mjs --dev",
+    "build": "node tools/build.mjs",
+    "check": "tsc --noEmit && tsc --noEmit -p tsconfig.sw.json",
+    "test": "npm run check && npm run build && node tests/run.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "typescript": "7.0.2"
+  }
+}

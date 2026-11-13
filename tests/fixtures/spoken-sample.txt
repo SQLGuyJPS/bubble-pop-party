@@ -1,0 +1,390 @@
+# both
+67 Great!
+2067 eigh is for apple.
+3650 Can you find the letter bee?
+4083 That's the number one.
+5633 Can you find the letter bee?
+8067 Great!
+10100 bee is for ball.
+11683 Can you find the number four?
+12083 Great!
+14117 four stars.
+15700 Can you find the number one?
+16083 That's the number three.
+17633 Can you find the number one?
+20067 Great!
+22067 one star.
+23617 Can you find the letter E?
+24067 Great!
+26067 E is for elephant.
+27617 Can you find the number five?
+28067 That's the letter bee.
+29617 Can you find the number five?
+32067 Great!
+34100 five stars.
+35683 Can you find the letter bee?
+36083 Great!
+38117 bee is for ball.
+39700 Can you find the number one?
+40083 That's the letter see.
+41667 Can you find the number one?
+44083 Great!
+46117 one star.
+47700 Can you find the letter eigh?
+48083 Great!
+50117 eigh is for apple.
+51700 Can you find the letter dee?
+52083 That's the number five.
+53667 Can you find the letter dee?
+56083 Great!
+58117 dee is for dog.
+59700 Hooray! You popped ten bubbles! Great job!
+60083 Great!
+62117 E is for elephant.
+63700 Can you find the number one?
+64083 That's the number five.
+65650 Can you find the number one?
+68067 Great!
+70067 one star.
+71617 Can you find the number two?
+72067 Great!
+74067 two stars.
+75617 Can you find the letter see?
+76067 That's the number four.
+77617 Can you find the letter see?
+80067 Great!
+82067 see is for cat.
+83617 Can you find the number one?
+84067 Great!
+86067 one star.
+87617 Can you find the number five?
+88067 That's the letter E.
+89617 Can you find the number five?
+96067 Can you find the number five?
+104083 Can you find the number five?
+112100 Can you find the number five?
+# default
+67 Great!
+2067 eigh is for apple.
+3650 Can you find the letter E?
+4083 That's the letter bee.
+5633 Can you find the letter E?
+8067 Great!
+10100 E is for elephant.
+11683 Can you find the letter see?
+12083 Great!
+14117 see is for cat.
+15700 Can you find the letter eigh?
+16083 That's the letter bee.
+17633 Can you find the letter eigh?
+20067 Great!
+22067 eigh is for apple.
+23617 Can you find the letter E?
+24067 Great!
+26067 E is for elephant.
+27617 Can you find the letter bee?
+28067 That's the letter see.
+29617 Can you find the letter bee?
+32067 Great!
+34100 bee is for ball.
+35683 Can you find the letter E?
+36083 Great!
+38117 E is for elephant.
+39700 Can you find the letter see?
+40083 That's the letter eigh.
+41667 Can you find the letter see?
+44083 Great!
+46117 see is for cat.
+47700 Can you find the letter dee?
+48083 Great!
+50117 dee is for dog.
+51700 Can you find the letter eigh?
+52083 That's the letter E.
+53667 Can you find the letter eigh?
+56083 Great!
+58117 eigh is for apple.
+59700 Hooray! You popped ten bubbles! Great job!
+60083 Great!
+62117 bee is for ball.
+63700 Can you find the letter eigh?
+64083 That's the letter E.
+65650 Can you find the letter eigh?
+68067 Great!
+70067 eigh is for apple.
+71617 Can you find the letter see?
+72067 Great!
+74067 see is for cat.
+75617 Can you find the letter eigh?
+76067 That's the letter E.
+77617 Can you find the letter eigh?
+80067 Great!
+82067 eigh is for apple.
+83617 Can you find the letter see?
+84067 Great!
+86067 see is for cat.
+87617 Can you find the letter eigh?
+88067 That's the letter dee.
+89617 Can you find the letter eigh?
+96067 Can you find the letter eigh?
+104083 Can you find the letter eigh?
+112100 Can you find the letter eigh?
+# numbers
+67 Great!
+2067 one star.
+3650 Can you find the number five?
+4083 That's the number three.
+5633 Can you find the number five?
+8067 Great!
+10100 five stars.
+11683 Can you find the number four?
+12083 Great!
+14117 four stars.
+15700 Can you find the number five?
+16083 That's the number two.
+17633 Can you find the number five?
+20067 Great!
+22067 five stars.
+23617 Can you find the number one?
+24067 Great!
+26067 one star.
+27617 Can you find the number four?
+28067 That's the number three.
+29617 Can you find the number four?
+32067 Great!
+34100 four stars.
+35683 Can you find the number five?
+36083 Great!
+38117 five stars.
+39700 Can you find the number four?
+40083 That's the number one.
+41667 Can you find the number four?
+44083 Great!
+46117 four stars.
+47700 Can you find the number five?
+48083 Great!
+50117 five stars.
+51700 Can you find the number three?
+52083 That's the number two.
+53667 Can you find the number three?
+56083 Great!
+58117 three stars.
+59700 Hooray! You popped ten bubbles! Great job!
+60083 Great!
+62117 five stars.
+63700 Can you find the number one?
+64083 That's the number four.
+65650 Can you find the number one?
+68067 Great!
+70067 one star.
+71617 Can you find the number three?
+72067 Great!
+74067 three stars.
+75617 Can you find the number four?
+76067 That's the number five.
+77617 Can you find the number four?
+80067 Great!
+82067 four stars.
+83617 Can you find the number one?
+84067 Great!
+86067 one star.
+87617 Can you find the number two?
+88067 That's the number three.
+89617 Can you find the number two?
+96067 Can you find the number two?
+104083 Can you find the number two?
+112100 Can you find the number two?
+# lower, whole alphabet
+67 Great!
+2067 en is for nose.
+3650 Can you find the letter tee?
+4083 That's the letter eigh.
+5633 Can you find the letter tee?
+8067 Great!
+10100 tee is for tree.
+11683 Can you find the letter bee?
+12083 Great!
+14117 bee is for ball.
+15700 Can you find the letter zee?
+16083 That's the letter eigh.
+17633 Can you find the letter zee?
+20067 Great!
+22067 zee is for zebra.
+23617 Can you find the letter see?
+24067 Great!
+26067 see is for cat.
+27617 Can you find the letter jay?
+28067 That's the letter vee.
+29617 Can you find the letter jay?
+32067 Great!
+34100 jay is for juice.
+35683 Can you find the letter you?
+36083 Great!
+38117 you is for umbrella.
+39700 Can you find the letter tee?
+40083 That's the letter eigh.
+41667 Can you find the letter tee?
+44083 Great!
+46117 tee is for tree.
+47700 Can you find the letter see?
+48083 Great!
+50117 see is for cat.
+51700 Can you find the letter gee?
+52083 That's the letter jay.
+53667 Can you find the letter gee?
+56083 Great!
+58117 gee is for goat.
+59700 Hooray! You popped ten bubbles! Great job!
+60083 Great!
+62117 jay is for juice.
+63700 Can you find the letter eye?
+64083 That's the letter oh.
+65650 Can you find the letter eye?
+68067 Great!
+70067 eye is for ice cream.
+71617 Can you find the letter tee?
+72067 Great!
+74067 tee is for tree.
+75617 Can you find the letter ex?
+76067 That's the letter dee.
+77617 Can you find the letter ex?
+80067 Great!
+82067 ex is for box.
+83617 Can you find the letter en?
+84067 Great!
+86067 en is for nose.
+87617 Can you find the letter cue?
+88067 That's the letter double you.
+89617 Can you find the letter cue?
+96067 Can you find the letter cue?
+104083 Can you find the letter cue?
+112100 Can you find the letter cue?
+# look-alikes, both cases
+67 Great!
+2067 you is for umbrella.
+3650 Can you find the letter double you?
+4083 That's the letter bee.
+5633 Can you find the letter double you?
+8067 Great!
+10100 double you is for whale.
+11683 Can you find the number one?
+12083 Great!
+14117 one star.
+15700 Can you find the letter pee?
+16083 That's the letter en.
+17633 Can you find the letter pee?
+20067 Great!
+22067 pee is for pig.
+23617 Can you find the letter en?
+24067 Great!
+26067 en is for nose.
+27617 Can you find the letter ell?
+28067 That's the number six.
+29617 Can you find the letter ell?
+32067 Great!
+34100 ell is for lion.
+35683 Can you find the letter double you?
+36083 Great!
+38117 double you is for whale.
+39700 Can you find the letter you?
+40083 That's the number zero.
+41667 Can you find the letter you?
+44083 Great!
+46117 you is for umbrella.
+47700 Can you find the letter cue?
+48083 Great!
+50117 cue is for queen.
+51700 Can you find the letter bee?
+52083 That's the letter ell.
+53667 Can you find the letter bee?
+56083 Great!
+58117 bee is for ball.
+59700 Hooray! You popped ten bubbles! Great job!
+60083 Great!
+62117 ell is for lion.
+63700 Can you find the letter you?
+64083 That's the number zero.
+65650 Can you find the letter you?
+68067 Great!
+70067 you is for umbrella.
+71617 Can you find the letter pee?
+72067 Great!
+74067 pee is for pig.
+75617 Can you find the letter bee?
+76067 That's the number nine.
+77617 Can you find the letter bee?
+80067 Great!
+82067 bee is for ball.
+83617 Can you find the letter en?
+84067 Great!
+86067 en is for nose.
+87617 Can you find the number one?
+88067 That's the letter double you.
+89617 Can you find the number one?
+96067 Can you find the number one?
+104083 Can you find the number one?
+112100 Can you find the number one?
+# two items
+67 Great!
+2067 eigh is for apple.
+3650 Can you find the letter bee?
+4083 That's the letter eigh.
+5633 Can you find the letter bee?
+8067 Great!
+10100 bee is for ball.
+11683 Can you find the letter eigh?
+12083 Great!
+14117 eigh is for apple.
+15700 Can you find the letter bee?
+16083 That's the letter eigh.
+17633 Can you find the letter bee?
+20067 Great!
+22067 bee is for ball.
+23617 Can you find the letter eigh?
+24067 Great!
+26067 eigh is for apple.
+27617 Can you find the letter bee?
+28067 That's the letter eigh.
+29617 Can you find the letter bee?
+32067 Great!
+34100 bee is for ball.
+35683 Can you find the letter eigh?
+36083 Great!
+38117 eigh is for apple.
+39700 Can you find the letter bee?
+40083 That's the letter eigh.
+41667 Can you find the letter bee?
+44083 Great!
+46117 bee is for ball.
+47700 Can you find the letter eigh?
+48083 Great!
+50117 eigh is for apple.
+51700 Can you find the letter bee?
+52083 That's the letter eigh.
+53667 Can you find the letter bee?
+56083 Great!
+58117 bee is for ball.
+59700 Hooray! You popped ten bubbles! Great job!
+60083 Great!
+62117 eigh is for apple.
+63700 Can you find the letter bee?
+64083 That's the letter eigh.
+65650 Can you find the letter bee?
+68067 Great!
+70067 bee is for ball.
+71617 Can you find the letter eigh?
+72067 Great!
+74067 eigh is for apple.
+75617 Can you find the letter bee?
+76067 That's the letter eigh.
+77617 Can you find the letter bee?
+80067 Great!
+82067 bee is for ball.
+83617 Can you find the letter eigh?
+84067 Great!
+86067 eigh is for apple.
+87617 Can you find the letter bee?
+88067 That's the letter eigh.
+89617 Can you find the letter bee?
+96067 Can you find the letter bee?
+104083 Can you find the letter bee?
+112100 Can you find the letter bee?

@@ -70,33 +70,38 @@ Rules:
 - **Windows hides file endings by default.** In File Explorer, turn on *View, then Show, then File name extensions*
   so you can see the real name. Otherwise you can end up with `cheer-B.m4a.m4a` without noticing.
 
-## 4. Connect the files to the game
+## 4. Check them on your computer
 
-After adding or changing files, run this in the project folder:
+There is nothing to connect: the game finds the files in `audio/` by their names. To see which clips it found and
+which are still using the computer voice, run this in the project folder:
 
 ```bash
 node tools/update-audio.mjs
 ```
 
-It looks in the `audio` folder, tells you which clips it found, which ones are still using the computer voice,
-and any file name it couldn't understand (like a typo). It also updates the list inside `index.html` for you,
-so you never have to edit code.
+It also lists any file whose name isn't a clip name (like a typo). **Files with any other name are left out of the
+game**, and `npm run build` prints a line about each one. That is also how to switch a recording off for a while
+without deleting it: rename it, for example `prompt-A.m4a` to `mute.prompt-A.m4a`.
 
-Then check it on your computer:
+Then listen to them:
 
 ```bash
-python -m http.server 8000
+npm run dev
 ```
 
-Open <http://localhost:8000>, press Play, and listen. If a clip doesn't play, the game quietly
-uses the computer voice for that one, and the `update-audio` report will usually tell you why.
+Open <http://localhost:8000>, press Play, and listen. If a clip doesn't play, the game quietly uses the computer voice
+for that one. (If `npm run dev` was already running, stop it with `Ctrl+C` and start it again, so it sees the new
+files.)
 
 ## 5. Put it on the iPad
 
-Recordings are part of the game, so they go out with the next push. The `audio` folder is saved on the iPad for
-offline use automatically. Adding recordings later is just: add files, run `node tools/update-audio.mjs`
-(it also refreshes the offline list), run `node tests/invariants.mjs`, then `git add -A`, `git commit -m "Add recordings"`
-and `git push`. The README ("Sending an update to the iPad") explains how to make the iPad pick up the new version.
+Recordings in `audio/` are part of the game, so they go out with the next update: run `npm test`, then `git add -A`,
+`git commit -m "Add recordings"` and `git push`, and merge into `main`. They are saved on the iPad for offline use
+automatically. The README ("Sending an update to the iPad") explains how the iPad picks up the new version.
+
+**Files in `audio/` are public**, because the repository is public: anyone can download them. If you'd rather keep
+your family's voices private, wait for Milestone 6, which records clips inside the game and keeps them only on the
+iPad.
 
 ## If something sounds wrong
 
@@ -104,4 +109,5 @@ Tell me which clip (for example `cheer-C`) and what you heard. The most common c
 
 - a long silence at the start of the file (trim it),
 - the file was recorded very quietly (re-record closer to the microphone), or
-- two files for the same clip with different endings (the report points this out).
+- two files for the same clip with different endings (the report points this out), or
+- a name the game doesn't use, like a typo (the report and `npm run build` point this out).
