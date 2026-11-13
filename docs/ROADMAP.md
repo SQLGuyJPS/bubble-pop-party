@@ -6,7 +6,7 @@ the end of every one.
 
 | # | Milestone | Size | Status |
 | --- | --- | --- | --- |
-| 5 | Split the code into files | Medium | Planned |
+| 5 | TypeScript, split into files, automatic deploy | Large | Planned |
 | 6 | Record clips inside the game | Large | Planned |
 | 7 | Counting | Medium | Planned |
 | 8 | Spell my name | Medium | Planned |
@@ -32,7 +32,7 @@ Order: recording comes first, then counting and the name. After that, each miles
    what the child and the parent see, the settings, the spoken lines, the edge cases, and the new checks. It is
    agreed before work starts and kept up to date until the milestone is merged.
 2. **Build it.** Every milestone adds checks to the tests for its own rules.
-3. **Before the pull request:** `node tools/update-sw.mjs`, then the tests with `0 problems found`. Update the README
+3. **Before the pull request:** `npm test` ends with `0 problems found`. Update the README
    (and AUDIO-GUIDE.md when there are new spoken lines).
 4. **Try it on the real iPad**, opened from the home-screen icon.
 5. Mark the milestone **Done** in the table above.
@@ -45,51 +45,85 @@ Order: recording comes first, then counting and the name. After that, each miles
 - **Storage.** Small settings stay in `localStorage`. Recordings and progress go in IndexedDB, and the game asks the
   browser to keep it (`navigator.storage.persist()`). If storage is blocked, the game still runs on the defaults,
   as it does today.
-- **No build step, no frameworks, no network calls.** The game must keep working from GitHub Pages, from
-  `python -m http.server`, and when `index.html` is opened by double-clicking.
+- **TypeScript with a build, no frameworks, no network calls.** From Milestone 5 the game is built by GitHub
+  Actions and served from GitHub Pages. Locally it runs with `npm run dev`. Opening `index.html` by
+  double-clicking is no longer supported.
 
 ---
 
-## Milestone 5: Split the code into files
+## Milestone 5: TypeScript, split into files, automatic deploy
 
 **Why now:** `index.html` is about 83 KB and 2,100 lines, roughly 25,000 to 30,000 tokens when an AI assistant reads
-it. In a 200,000-token context window, that one file is about 13 to 15% of the window, before the instructions,
-the tests (another 13,000 to 15,000 tokens) or any conversation. Every milestone below would make it bigger:
-recording alone probably adds 800 or more lines. Splitting it first means each later change loads only the files
-it touches.
+it. In a 200,000-token context window that one file is about 13 to 15% of the window, before the instructions, the
+tests (another 13,000 to 15,000 tokens) or any conversation. Every later milestone would make it bigger. Splitting
+it first means each change loads only the files it touches. Moving to TypeScript at the same time means the code is
+only rewritten once.
 
-**What changes (and what doesn't):** the game behaves exactly the same. Only where the code lives changes.
+**What changes for the child: nothing.** The game behaves exactly the same. The changes are in how the code is
+written, checked and published.
 
-- `index.html` keeps only the page markup (about 180 lines).
-- `css/game.css` holds the styles.
-- `js/` holds the script, split by job. Each file stays under about 400 lines. A likely layout:
+**The code:**
+
+- TypeScript in `src/`, split by job into ES modules, each under about 400 lines. A likely layout:
 
   | File | What it holds |
   | --- | --- |
-  | `js/config.js` | Tunable constants and default settings |
-  | `js/items.js` | Letters, numbers, look-alikes |
-  | `js/audio-overrides.js` | Your recordings list (written by `tools/update-audio.mjs`) |
-  | `js/settings.js` | Loading, checking and saving settings |
-  | `js/speech.js` | `say()`, the computer voice, recorded clips |
-  | `js/sound.js` | Pop, fanfare and boop sounds |
-  | `js/targets.js` | Spawning bubbles and choosing what to find |
-  | `js/draw.js` | Drawing bubbles and confetti |
-  | `js/game.js` | The main loop, start, pause, play time |
-  | `js/parent.js` | The parent gate and the settings screen |
-  | `js/main.js` | Wiring up buttons and starting up |
+  | `src/config.ts` | Tunable constants, default settings, speed limits |
+  | `src/items.ts` | Letters, numbers, look-alikes |
+  | `src/settings.ts` | Loading, checking and saving settings |
+  | `src/speech.ts` | `say()`, the computer voice, recorded clips |
+  | `src/sound.ts` | Pop, fanfare and boop sounds |
+  | `src/targets.ts` | Spawning bubbles and choosing what to find |
+  | `src/draw.ts` | Drawing bubbles and confetti |
+  | `src/game.ts` | The main loop, start, pause, play time |
+  | `src/parent.ts` | The parent gate and the settings screen |
+  | `src/main.ts` | Wiring up buttons and starting up |
+  | `src/styles.css` | The styles |
 
-- **Plain `<script src>` tags in a fixed order, not ES modules.** Browsers block modules on pages opened by
-  double-clicking (`file://`), and that must keep working. The files share one scope; the spec decides whether
-  that is plain globals or one shared namespace object.
-- `tools/update-sw.mjs` adds `css/` and `js/` to the offline list. `tools/update-audio.mjs` writes
-  `js/audio-overrides.js` instead of editing `index.html`.
-- The tests load the scripts in the order `index.html` lists them. `tests/invariants.mjs` (44 KB) is split the
-  same way: a shared fake-browser harness plus one file per area, still run with one command.
-- The rule "the game makes no network calls" is checked across every script file.
+- `index.html` keeps only the page markup (about 180 lines).
+- **esbuild** bundles everything into one script and one stylesheet in `dist/`, the folder that gets published.
+  **`tsc --noEmit`** does the type checking. Strict mode from the start.
+- The build targets the Safari version on the family iPad (an iPad 7th generation, which tops out at iPadOS 18).
+  The spec confirms the exact version from Settings, General, About.
 
-**Done when:** all checks pass unchanged in meaning; the printed sample of spoken lines is identical before and
-after; a before-and-after screenshot of the game matches; the iPad updates to the new version and works with
-Airplane Mode on.
+**Generated at build time instead of by hand:**
+
+- The offline file list and version in `sw.js` (today: `node tools/update-sw.mjs` before every push).
+- The recordings list (today: `node tools/update-audio.mjs` edits `index.html`). The build looks in `audio/`
+  itself. `update-audio.mjs --script` stays for printing the words to record.
+- This removes the "forgot to run the tool" problem that currently breaks the tests on `main`.
+
+**Publishing:**
+
+- A GitHub Actions workflow runs on every push to `main`: install, type check, build, run the tests, then publish
+  `dist/` to GitHub Pages. If a check fails, nothing is published and the iPad keeps the last good version.
+- One-time setup for you: in the repo's Pages settings, change **Source** from "Deploy from a branch" to
+  **GitHub Actions**.
+- Pushes to other branches run the checks only, so a pull request shows a green or red mark.
+
+**On your computer:**
+
+- `npm install` once, then `npm run dev` (a local server that rebuilds when files change) replaces
+  `python -m http.server`.
+- `npm test` builds and runs the checks. `npm run check` runs only the type check.
+
+**Tests:**
+
+- The fake-browser harness stays and loads the built bundle, so the tests check what actually ships.
+- `tests/invariants.mjs` (44 KB) is split into a shared harness plus one file per area, still run with one command.
+- The "no network calls" and "no leading `/` paths" checks cover all of `src/`.
+
+**Dropped:** opening `index.html` by double-clicking (`file://`). The README's instructions for that go.
+
+**Speed measurements:** this milestone includes the canvas benchmark described under "Speed limits" below, so
+later milestones have real numbers.
+
+**Done when:**
+
+- All checks pass with the same meaning as before.
+- The printed sample of spoken lines is identical before and after.
+- Before-and-after screenshots of the game match.
+- The workflow publishes the game, and the iPad updates to it and works with Airplane Mode on.
 
 ## Milestone 6: Record clips inside the game
 
@@ -105,8 +139,7 @@ the screen is built, a throwaway test page confirms:
 - the microphone prompt works from the home-screen icon;
 - after recording, the game's sound doesn't get quieter or move to the earpiece (iOS can do this, so the game must
   fully let go of the microphone after every take);
-- what happens when the game is opened by double-clicking: recording isn't possible there, so the Recordings
-  screen explains that instead.
+- which iPadOS version is on the iPad and what Safari records in (expected: AAC in an `.m4a` file).
 
 **Backup:** "Save recordings to a file" and "Load recordings" buttons, so clips survive deleting the app or moving
 to a new iPad. Recording from files (AUDIO-GUIDE.md) stays as an alternative.
@@ -226,10 +259,39 @@ revealed at the end of a party.
 **What each theme sets:** background layers that drift at different speeds, bubble style, confetti shapes, a few
 background animals, and the pop sound.
 
-**Older iPads:** the background is drawn once and reused, and moving decorations are capped. Movement follows the
-iPad's reduce-motion setting.
+**Speed:** scenery that doesn't move is drawn once (as SVG, or cached on its own canvas layer) and reused. Moving
+decorations stay inside the speed limits below. Movement follows the iPad's reduce-motion setting.
 
 **Readability:** a check makes sure the letter on every bubble stays easy to read in every theme.
+
+## Speed limits
+
+Measured on the family iPad (iPad 7th generation) with another game: still SVGs cost almost nothing, and motion
+stayed smooth up to about 1,100 moving SVGs. That game's limits, used here too:
+
+| Limit | Value |
+| --- | --- |
+| SVG elements on screen, in total | 4,800 |
+| SVG elements moving at once | 650 |
+
+**How they apply here.** The bubbles and confetti are drawn on a `<canvas>`, not as SVG elements, and a canvas
+behaves differently:
+
+- **SVG** (the sticker book, theme scenery, pictures in the parent area): the limits above apply as they are.
+- **Canvas** (bubbles, confetti, moving decorations): the whole picture is redrawn every frame, so nothing on it
+  is "still" unless it sits on a layer drawn once and reused. The cost of each object also depends on how it is
+  drawn: soft glows (`shadowBlur`), gradients and text cost far more than a flat dot. Until measured, the same
+  650 applies to everything moving on the canvas, and the canvas never draws more than that per frame.
+- **Measuring it (Milestone 5):** a test page on the iPad draws more and more bubbles and confetti the way the game
+  does, and records the count where motion stops being smooth. The canvas limit is then set the way the SVG one
+  was: about 60% of the point where it stops being smooth (650 is about 60% of 1,100).
+
+**Design limits stay separate.** No more than 4 bubbles, for a toddler's clarity, no matter what the iPad could
+handle. The 60-piece confetti cap was set for speed. The speed limit no longer requires it, so whether bigger
+parties get more confetti is a design choice for a later milestone.
+
+**Checking:** `config.ts` holds the limits. With `?debug`, a corner counter shows the moving and total counts and
+the frame rate. The tests fail if a simulated game ever goes over a limit.
 
 ## Decisions taken unless changed
 
@@ -237,3 +299,10 @@ iPad's reduce-motion setting.
 2. Counting uses dots first; picture objects can come later.
 3. Adaptive difficulty is off by default.
 4. X becomes xylophone for picture-only prompts.
+
+## Decisions made
+
+- TypeScript with an esbuild build, published by GitHub Actions (chosen over plain JavaScript with no build).
+- Opening `index.html` by double-clicking (`file://`) is no longer supported.
+- Modern JavaScript and CSS are fine: the target is Safari on the family iPad 7th generation.
+- Speed limits copied from the other game's iPad measurements (see "Speed limits").
