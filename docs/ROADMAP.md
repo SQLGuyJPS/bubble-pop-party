@@ -282,8 +282,8 @@ frame, so those numbers don't carry over. **The canvas has no limit yet.** Miles
 finds the iPad's breaking point for canvas drawing, and the canvas limits are set from that measurement.
 
 **Design limits stay separate.** No more than 4 bubbles, for a toddler's clarity, no matter what the iPad could
-handle. The 60-piece confetti cap was set for speed. The speed limit no longer requires it, so whether bigger
-parties get more confetti is a design choice for a later milestone.
+handle. The 60-piece confetti cap was set for speed. The speed test shows whether it can go higher. If it
+can, bigger parties become a design choice for a later milestone.
 
 **Checking:** `config.ts` holds the limits. With `?debug`, a corner counter shows the moving and total counts and
 the frame rate. The tests fail if a simulated game ever goes over a limit.
