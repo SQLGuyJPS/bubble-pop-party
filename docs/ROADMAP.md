@@ -59,8 +59,13 @@ tests (another 13,000 to 15,000 tokens) or any conversation. Every later milesto
 it first means each change loads only the files it touches. Moving to TypeScript at the same time means the code is
 only rewritten once.
 
-**What changes for the child: nothing.** The game behaves exactly the same. The changes are in how the code is
-written, checked and published.
+**Full spec:** [`docs/specs/m05-typescript-build.md`](specs/m05-typescript-build.md).
+
+**What changes for the child:** two small banner changes. Everything else behaves exactly the same.
+
+- "Letter at the top" defaults to **Hide**. A device with settings already saved keeps what it has.
+- The word under the picture follows the letter case: APPLE with ABC, apple with abc, and apple with Both (and with
+  Match later), because children learning small letters usually already know capitals.
 
 **The code:**
 
@@ -83,8 +88,7 @@ written, checked and published.
 - `index.html` keeps only the page markup (about 180 lines).
 - **esbuild** bundles everything into one script and one stylesheet in `dist/`, the folder that gets published.
   **`tsc --noEmit`** does the type checking. Strict mode from the start.
-- The build targets the Safari version on the family iPad (an iPad 7th generation, which tops out at iPadOS 18).
-  The spec confirms the exact version from Settings, General, About.
+- The build targets Safari 18 (the family iPad runs iOS 18).
 
 **Generated at build time instead of by hand:**
 
@@ -97,8 +101,6 @@ written, checked and published.
 
 - A GitHub Actions workflow runs on every push to `main`: install, type check, build, run the tests, then publish
   `dist/` to GitHub Pages. If a check fails, nothing is published and the iPad keeps the last good version.
-- One-time setup for you: in the repo's Pages settings, change **Source** from "Deploy from a branch" to
-  **GitHub Actions**.
 - Pushes to other branches run the checks only, so a pull request shows a green or red mark.
 
 **On your computer:**
@@ -115,8 +117,8 @@ written, checked and published.
 
 **Dropped:** opening `index.html` by double-clicking (`file://`). The README's instructions for that go.
 
-**Speed measurements:** this milestone includes the canvas benchmark described under "Speed limits" below, so
-later milestones have real numbers.
+**Speed test:** this milestone builds a speed test page and runs it on the iPad, to find the canvas limits (see
+"Speed limits" below).
 
 **Done when:**
 
@@ -274,17 +276,10 @@ stayed smooth up to about 1,100 moving SVGs. That game's limits, used here too:
 | SVG elements on screen, in total | 4,800 |
 | SVG elements moving at once | 650 |
 
-**How they apply here.** The bubbles and confetti are drawn on a `<canvas>`, not as SVG elements, and a canvas
-behaves differently:
-
-- **SVG** (the sticker book, theme scenery, pictures in the parent area): the limits above apply as they are.
-- **Canvas** (bubbles, confetti, moving decorations): the whole picture is redrawn every frame, so nothing on it
-  is "still" unless it sits on a layer drawn once and reused. The cost of each object also depends on how it is
-  drawn: soft glows (`shadowBlur`), gradients and text cost far more than a flat dot. Until measured, the same
-  650 applies to everything moving on the canvas, and the canvas never draws more than that per frame.
-- **Measuring it (Milestone 5):** a test page on the iPad draws more and more bubbles and confetti the way the game
-  does, and records the count where motion stops being smooth. The canvas limit is then set the way the SVG one
-  was: about 60% of the point where it stops being smooth (650 is about 60% of 1,100).
+**How they apply here.** The SVG limits apply to anything drawn as SVG elements (the sticker book, theme scenery,
+pictures in the parent area). The bubbles and confetti are drawn on a `<canvas>`, which redraws everything every
+frame, so those numbers don't carry over. **The canvas has no limit yet.** Milestone 5 builds a speed test page that
+finds the iPad's breaking point for canvas drawing, and the canvas limits are set from that measurement.
 
 **Design limits stay separate.** No more than 4 bubbles, for a toddler's clarity, no matter what the iPad could
 handle. The 60-piece confetti cap was set for speed. The speed limit no longer requires it, so whether bigger
@@ -304,5 +299,7 @@ the frame rate. The tests fail if a simulated game ever goes over a limit.
 
 - TypeScript with an esbuild build, published by GitHub Actions (chosen over plain JavaScript with no build).
 - Opening `index.html` by double-clicking (`file://`) is no longer supported.
-- Modern JavaScript and CSS are fine: the target is Safari on the family iPad 7th generation.
-- Speed limits copied from the other game's iPad measurements (see "Speed limits").
+- Modern JavaScript and CSS are fine: the target is Safari 18 on the family iPad 7th generation (iOS 18).
+- SVG speed limits copied from the other game's iPad measurements. Canvas limits wait for the Milestone 5 speed test.
+- Pages publishes from GitHub Actions (set up).
+- "Letter at the top" defaults to Hide, and the banner word follows the letter case (Milestone 5).
