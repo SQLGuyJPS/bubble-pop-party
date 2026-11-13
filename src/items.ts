@@ -1,6 +1,6 @@
 /* Letters and numbers. "say" is a phonetic respelling so the computer voice reads the letter NAME ("bee")
    instead of a word or a sound. "pic" is the picture shown beside the big character. */
-import { state, type Key } from './state';
+import { state, type Key, type Target } from './state';
 
 export interface Item { say: string; word: string; pic: string }
 
@@ -77,4 +77,13 @@ export function pool(): Key[] {
   const out: Key[] = [];
   for (const k of keys) if (isItem(k) && !out.includes(k)) out.push(k);
   return out.length ? out : ['A'];
+}
+
+/* The word under the picture, written in the same case as the letter on the bubble the child has to find:
+   "A" gives APPLE, "a" gives apple. With Both, each target can differ. Numbers keep their words ("three stars").
+   (Milestone 9, matching: the word follows the bubble, because that is the form the child has to find.) */
+export function bannerWord(t: Target): string {
+  const word = info(t.key).word;
+  if (isNumber(t.key)) return word;
+  return t.glyph === t.key ? word.toUpperCase() : word.toLowerCase();
 }

@@ -71,7 +71,9 @@ export const DEFAULTS: Readonly<Settings> = {
   sparkles: 'auto',       // extra sparkles on the hinted bubble: 'auto' (only for letters she misses), 'on', 'off'
                           // (the glow and pulse are always on)
   sessionMinutes: 0,
-  showGlyph: true         // show the big letter/number in the top banner (off = she must listen and match the name)
+  showGlyph: false        // show the big letter/number in the top banner. Off by default: she listens, sees the
+                          // picture and word, and matches them to the letter. A device that already saved its
+                          // settings keeps what it saved.
 };
 
 /* Settings are remembered on this device under this name. */

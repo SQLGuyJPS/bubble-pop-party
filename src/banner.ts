@@ -1,7 +1,7 @@
 /* The banner at the top (what to find) and the star bar at the bottom. */
 import { STARS_PER_PARTY } from './config';
 import { els, restartAnimation } from './dom';
-import { info } from './items';
+import { bannerWord, info } from './items';
 import { state } from './state';
 
 export function updateBanner(): void {
@@ -10,7 +10,7 @@ export function updateBanner(): void {
   els.glyph.textContent = t.glyph;
   els.glyph.classList.toggle('hidden', !state.settings.showGlyph);
   els.pic.textContent = it.pic;
-  els.word.textContent = it.word;
+  els.word.textContent = bannerWord(t);
   els.banner.classList.add('show');
   restartAnimation(els.banner, 'pop');   // the little bounce
 }
