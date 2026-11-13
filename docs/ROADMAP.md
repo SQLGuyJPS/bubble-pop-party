@@ -167,9 +167,10 @@ still, record the name on the Recordings screen.
 **Play:** a "My name" choice under What to practice.
 
 - Targets come in name order. The banner shows the name as tiles that fill in as letters are found.
-- Finishing the name brings a big party. Each tile lights up in turn with a rising tone, then the voice says the
-  name once: "Josh!" (Spelling it aloud letter by letter has the same slowness problem as counting aloud; see
-  Milestone 8.)
+- Finishing the name brings a big party. The voice spells the name aloud letter by letter, then says the whole
+  name: "J... o... s... h... Josh!" Each tile lights up as its letter is said. Spelling aloud stays, even though it
+  is slower than the counting reward, because learning the letter names is the point of this mode. It is one spoken
+  line, so nothing else is queued behind it, and the party waits for it to finish.
 
 **Details:**
 
