@@ -8,8 +8,8 @@ the end of every one.
 | --- | --- | --- | --- |
 | 5 | TypeScript, split into files, automatic deploy | Large | Planned |
 | 6 | Record clips inside the game | Large | Planned |
-| 7 | Counting | Medium | Planned |
-| 8 | Spell my name | Medium | Planned |
+| 7 | Spell my name | Medium | Planned |
+| 8 | Counting | Medium | Planned |
 | 9 | Capital-to-small matching | Small | Planned |
 | 10 | Content packs (colors, shapes, animals) | Large | Planned |
 | 11 | Adaptive difficulty and saved progress | Medium | Planned |
@@ -17,10 +17,10 @@ the end of every one.
 | 13 | Sticker book | Medium | Planned |
 | 14 | Themed scenes | Medium to Large | Planned |
 
-Order: recording comes first, then counting and the name. After that, each milestone builds on the one before it:
+Order: recording comes first, then the name, then counting. After that, each milestone builds on the one before it:
 
 - Matching (9) separates what the banner shows from what the bubbles show, which picture-only prompts (12) need.
-- Packs (10) come before adaptive difficulty (11) so difficulty works for every kind of content. Counting (7) is the
+- Packs (10) come before adaptive difficulty (11) so difficulty works for every kind of content. Counting (8) is the
   first, small step toward packs.
 - Picture-only prompts (12) and the sticker book (13) use the progress that 11 saves.
 - Themes (14) come last so they can restyle everything, the sticker book included. They don't depend on anything,
@@ -133,7 +133,7 @@ only rewritten once.
 say and has Record, Play, Re-record and Delete buttons, plus a count like "12 of 32 recorded". Recording stops by
 itself after about 4 seconds. Silence is trimmed from both ends and the volume is evened out.
 
-Which clip plays: your in-app recording first, then a file recording (`AUDIO_OVERRIDES`), then the computer voice.
+Which clip plays: your in-app recording first, then a file in `audio/`, then the computer voice.
 
 **Main risk, tested first:** the iPad's microphone when the game is opened from the home-screen icon. Before any of
 the screen is built, a throwaway test page confirms:
@@ -143,14 +143,45 @@ the screen is built, a throwaway test page confirms:
   fully let go of the microphone after every take);
 - which iPadOS version is on the iPad and what Safari records in (expected: AAC in an `.m4a` file).
 
-**Backup:** "Save recordings to a file" and "Load recordings" buttons, so clips survive deleting the app or moving
-to a new iPad. Recording from files (AUDIO-GUIDE.md) stays as an alternative.
+**Where recordings live:** in the iPad's own storage for the game, not in the GitHub repository. Recording on the
+iPad never changes any file in the repo, so it never shows up in git and never needs a push. The recordings are
+also never public.
+
+**Backup and moving to another device:** "Save recordings to a file" makes one file (all clips in one bundle) and
+opens the iPad's share sheet, so you can keep it in Files, iCloud Drive or email. "Load recordings" on another
+device reads that file back in. This also covers deleting and re-adding the app.
+
+**Recordings in the repo stay possible:** files in `audio/` (AUDIO-GUIDE.md) still work, and the build publishes
+them with the game. Anything in `audio/` is public, because the repository is public. A recording made on the iPad
+wins over a file in `audio/` with the same clip name.
 
 **New checks:** a fake recorder and fake storage. The playback order above; a deleted clip falls back; blocked
 storage doesn't break the game; the microphone is always released; in-app recordings never appear in the offline
 file list.
 
-## Milestone 7: Counting
+## Milestone 7: Spell my name
+
+**Setup:** the parent types the name and, if the computer voice says it wrong, a pronunciation spelling. Better
+still, record the name on the Recordings screen.
+
+**Play:** a "My name" choice under What to practice.
+
+- Targets come in name order. The banner shows the name as tiles that fill in as letters are found.
+- Finishing the name brings a big party. Each tile lights up in turn with a rising tone, then the voice says the
+  name once: "Josh!" (Spelling it aloud letter by letter has the same slowness problem as counting aloud; see
+  Milestone 8.)
+
+**Details:**
+
+- **Capitals:** a name is written with a capital first and small letters after ("Josh"), so the bubbles follow the
+  name's own capitals whatever the ABC/abc setting says.
+- **Repeated letters:** in a name like "Anna", each tile fills in turn.
+- **Look-alikes:** look-alikes of the letter wanted right now stay off the screen, even if the name itself has both
+  b and d.
+
+The name stays on the device only.
+
+## Milestone 8: Counting
 
 **Two ways to play (a setting):**
 
@@ -162,30 +193,22 @@ file list.
 
 **New look-alike rule:** counts above 5 that differ by one (7 and 8) never appear together.
 
-**Reward:** on a correct pop the dots light up one by one as the voice counts "one, two, three... three dots!"
+**Reward: rising tones, then one spoken number.** On a correct pop, each dot lights up in turn with a short tone, each
+tone a step higher than the last. Then the voice says only the total: "Three!" Counting aloud word by word is too slow
+(above about 5 it drags on, even with recordings) and holds up the other sounds while it plays.
+
+- The tones are sound effects (Web Audio), not speech, so they never wait on the voice. They climb a major scale, so
+  even 10 of them sound like a tune.
+- The whole run of tones takes at most about 1.5 seconds. Small counts go at a relaxed pace; larger counts go faster
+  to fit.
+- The spoken total is one short clip per number (`count:3`, "Three!"), so it can be recorded. The next "Can you
+  find...?" follows it.
+- Find the number works the same way: the stars in the banner light up with the tones.
+- Mute silences the tones but the lights still run.
+- New checks: one tone per dot, the run fits the time limit, and the only speech is the total at the end.
 
 **Under the hood:** item *kinds* (letter, number, count), each with its own way of drawing a bubble. This is the
 first step toward packs (Milestone 10).
-
-## Milestone 8: Spell my name
-
-**Setup:** the parent types the name and, if the computer voice says it wrong, a pronunciation spelling. Better
-still, record the name on the Recordings screen.
-
-**Play:** a "My name" choice under What to practice.
-
-- Targets come in name order. The banner shows the name as tiles that fill in as letters are found.
-- Finishing the name brings a big party: "J... o... s... h... Josh!"
-
-**Details:**
-
-- **Capitals:** a name is written with a capital first and small letters after ("Josh"), so the bubbles follow the
-  name's own capitals whatever the ABC/abc setting says.
-- **Repeated letters:** in a name like "Anna", each tile fills in turn.
-- **Look-alikes:** look-alikes of the letter wanted right now stay off the screen, even if the name itself has both
-  b and d.
-
-The name stays on the device only.
 
 ## Milestone 9: Capital-to-small matching
 
@@ -240,7 +263,7 @@ applies to items the child already knows.
 **Word fixes:** "X is for box" doesn't work here because box ends with X, so X becomes xylophone. Every other word gets
 checked too.
 
-**Reuse:** for numbers this is the same as Milestone 7's Find the number.
+**Reuse:** for numbers this is the same as Milestone 8's Find the number.
 
 ## Milestone 13: Sticker book
 

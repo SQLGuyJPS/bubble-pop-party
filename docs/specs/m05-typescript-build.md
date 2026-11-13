@@ -139,6 +139,12 @@ Dependencies: `typescript` and `esbuild` only, as dev dependencies, with exact v
   Only one deploy runs at a time.
 - If any step fails, nothing is published.
 - Pages is already set to deploy from GitHub Actions.
+- **Safe for a public repo:**
+  - The checks job has read-only permissions.
+  - Pull requests run on the `pull_request` trigger (never `pull_request_target`), so a pull request from a stranger
+    gets no write access and no secrets.
+  - Only a push to `main` can deploy. The deploy job uses the `github-pages` environment, which is limited to `main`.
+  - Third-party actions are pinned to an exact version.
 
 ## 6. Tests
 
