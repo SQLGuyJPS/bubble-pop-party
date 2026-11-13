@@ -11,4 +11,7 @@ desktop.ini
 # Logs and temporary files
 *.log
 *.tmp
+
+# Build output and packages
+dist/
 node_modules/
