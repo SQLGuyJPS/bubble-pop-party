@@ -28,25 +28,33 @@ or later.
   saved default from a parent's deliberate choice. The pull request description says this.
 - The README's settings table gains its missing row: "Letter at the top: Show or Hide (default Hide)".
 
-### 2b. The word under the picture follows the letter case
+### 2b. The word under the picture matches the target bubble's case
 
-The word in the banner (for example "apple") is written in the case the letters are practised in:
+The banner word (for example "apple") is written in the same case as the letter on the bubble the child has to
+find:
 
-| Case setting | Word shows | Why |
-| --- | --- | --- |
-| ABC (capitals) | APPLE | Matches the bubbles |
-| abc (small) | apple | Matches the bubbles |
-| Both | apple | Children learning small letters usually already know capitals, so small letters are what needs practice |
-| Match (comes in Milestone 9) | apple | Same reason as Both |
-| Numbers only (no case setting shown) | three stars | As today |
+| Target bubble shows | Word shows |
+| --- | --- |
+| A | APPLE |
+| a | apple |
+| a number (3) | three stars, as today |
 
-- When letters and numbers are both being practised, the rule applies to every banner word, numbers included
-  ("THREE STARS" with ABC).
+- **The case comes from the target bubble, not from the setting.** With Both, each bubble is randomly a capital or
+  a small letter, so the word changes from target to target. With ABC or abc it is always capitals or always small.
+- **It already lines up today.** The target keeps its letter form (`target.glyph`) from the moment it's chosen. A
+  bubble chosen from the screen passes its form to the target, and a target that comes back up from the bottom
+  keeps its form. So the word is set once per target, in `updateBanner()`, from `target.glyph`.
+- **Match (Milestone 9):** the banner letter and the bubble letter will differ. The word follows the **bubble**,
+  because that is the form the child has to find.
 - Only the written word changes. Speech, recordings and the picture stay the same.
-- The rule lives in one function (for example `bannerWordCase()`), so Milestone 9 adds its Match case in one place.
+- The rule lives in one function (for example `bannerWord(target)`).
 
-New checks: the default is Hide; a saved Show is kept; for each case setting, the banner word's case matches the
-table, including mixed letters and numbers.
+New checks:
+- The default is Hide, and a saved Show is kept.
+- For ABC, abc and Both, the banner word's case matches the target bubble's letter on every target in a long
+  simulated game. That includes targets that come back up from the bottom and targets chosen from bubbles already on
+  screen.
+- Number words are unchanged.
 
 ## 3. Layout after the milestone
 

@@ -64,8 +64,8 @@ only rewritten once.
 **What changes for the child:** two small banner changes. Everything else behaves exactly the same.
 
 - "Letter at the top" defaults to **Hide**. A device with settings already saved keeps what it has.
-- The word under the picture follows the letter case: APPLE with ABC, apple with abc, and apple with Both (and with
-  Match later), because children learning small letters usually already know capitals.
+- The word under the picture is written in the same case as the letter on the bubble to find: APPLE when it's
+  "A", apple when it's "a". With Both, it changes from target to target.
 
 **The code:**
 
@@ -302,4 +302,4 @@ the frame rate. The tests fail if a simulated game ever goes over a limit.
 - Modern JavaScript and CSS are fine: the target is Safari 18 on the family iPad 7th generation (iOS 18).
 - SVG speed limits copied from the other game's iPad measurements. Canvas limits wait for the Milestone 5 speed test.
 - Pages publishes from GitHub Actions (set up).
-- "Letter at the top" defaults to Hide, and the banner word follows the letter case (Milestone 5).
+- "Letter at the top" defaults to Hide, and the banner word matches the case of the target bubble's letter (Milestone 5).
