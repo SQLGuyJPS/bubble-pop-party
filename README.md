@@ -194,7 +194,21 @@ The page <https://sqlguyjps.github.io/bubble-pop-party/perf/> finds how many mov
 the motion stops being smooth, using the game's own drawing code. It is not linked from the game and not saved for
 offline use. To run it: charge the iPad, turn Low Power Mode off, open the page in Safari, tap **Start the speed
 test**, keep the iPad still for a few minutes, then take a screenshot of the results. The numbers set the speed
-limits in `docs/ROADMAP.md`.
+limits in `docs/ROADMAP.md`: each limit is 80% of the most the iPad drew smoothly.
+
+Results from the family iPad (iPad 7th generation):
+
+| What was drawn | Most that stayed smooth | Limit the game keeps under |
+| --- | --- | --- |
+| Plain bubbles | 11 | 8 |
+| Bubbles with the hint glow and sparkles | 4 | 3 |
+| Confetti pieces | 1,839 | 1,471 |
+| Bubbles and confetti together | 152 | 121 |
+| Moving bubbles over a still picture | 9 | 7 |
+
+The game itself shows at most 4 bubbles, only 1 of them glowing, and 60 confetti pieces, so it stays well under every
+limit. If you run the test again on a different iPad, the limits are in `src/config.ts` and the measured numbers are
+in `tests/limits.mjs`.
 
 ## How the offline copy works
 

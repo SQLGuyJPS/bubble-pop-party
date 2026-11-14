@@ -6,7 +6,7 @@ the end of every one.
 
 | # | Milestone | Size | Status |
 | --- | --- | --- | --- |
-| 5 | TypeScript, split into files, automatic deploy | Large | Built; waiting for the iPad test and speed test |
+| 5 | TypeScript, split into files, automatic deploy | Large | Built; speed test done; waiting for the iPad update test |
 | 6 | Record clips inside the game | Large | Planned |
 | 7 | Spell my name | Medium | Planned |
 | 8 | Counting | Medium | Planned |
@@ -302,21 +302,28 @@ stayed smooth up to about 1,100 moving SVGs. That game's limits, used here too:
 
 **How they apply here.** The SVG limits apply to anything drawn as SVG elements (the sticker book, theme scenery,
 pictures in the parent area). The bubbles and confetti are drawn on a `<canvas>`, which redraws everything every
-frame, so those numbers don't carry over. **The canvas has no limit yet.** Milestone 5 built a speed test page
-(<https://sqlguyjps.github.io/bubble-pop-party/perf/>, see the README) that finds the iPad's breaking point for canvas
-drawing, and the canvas limits are set from that measurement.
+frame, so those numbers don't carry over. Milestone 5 built a speed test page
+(<https://sqlguyjps.github.io/bubble-pop-party/perf/>, see the README) that found the iPad's breaking point for canvas
+drawing. Each canvas limit is **80% of the breaking point**, rounded down.
 
-| Canvas case (iPad 7th generation, measured with the speed test) | Breaking point | Limit chosen |
-| --- | --- | --- |
-| Plain bubbles, game size | not yet measured | |
-| Bubbles with hint glow and sparkles | not yet measured | |
-| Confetti pieces | not yet measured | |
-| Mix (1 bubble : 15 confetti) | not yet measured | |
-| Moving bubbles over 400 cached still ones | not yet measured | |
+Measured on the family iPad 7th generation, Safari 18.7, screen 1080 x 707 points at pixel density 2, 59 frames a
+second, bubbles 346 points across. "Smooth" means no more than 1 frame in 20 takes over 1.5 times the normal frame
+time, over 120 frames after a 0.5 s warm-up.
+
+| Canvas case (iPad 7th generation, measured with the speed test) | Breaking point | Limit chosen | The game today |
+| --- | --- | --- | --- |
+| Plain bubbles, game size | 11 | 8 | 4 at most (design limit) |
+| Bubbles with hint glow and sparkles | 4 | 3 | 1 (only the bubble being asked for glows) |
+| Confetti pieces | 1,839 | 1,471 | 60 at most |
+| Mix (1 bubble : 15 confetti) | 152 | 121 | 64 at most (4 bubbles + 60 confetti) |
+| Moving bubbles over 400 cached still ones | 9 | 7 | not used yet (for themed scenes) |
+
+The speed test's glow case makes every bubble glow at once, which the game never does, so the glow limit is far from
+being a problem.
 
 **Design limits stay separate.** No more than 4 bubbles, for a toddler's clarity, no matter what the iPad could
-handle. The 60-piece confetti cap was set for speed. The speed test shows whether it can go higher. If it
-can, bigger parties become a design choice for a later milestone.
+handle. The 60-piece confetti cap was set for speed. The speed test shows it can go much higher (the limit is
+1,471 pieces, and 117 with 4 bubbles on screen), so bigger parties are a design choice for a later milestone.
 
 **Checking:** `config.ts` holds the limits. With `?debug`, a corner counter shows the moving and total counts and
 the frame rate. The tests fail if a simulated game ever goes over a limit.
@@ -333,6 +340,7 @@ the frame rate. The tests fail if a simulated game ever goes over a limit.
 - TypeScript with an esbuild build, published by GitHub Actions (chosen over plain JavaScript with no build).
 - Opening `index.html` by double-clicking (`file://`) is no longer supported.
 - Modern JavaScript and CSS are fine: the target is Safari 18 on the family iPad 7th generation (iOS 18).
-- SVG speed limits copied from the other game's iPad measurements. Canvas limits wait for the Milestone 5 speed test.
+- SVG speed limits copied from the other game's iPad measurements.
+- Canvas speed limits set at 80% of the breaking points the Milestone 5 speed test measured on the iPad.
 - Pages publishes from GitHub Actions (set up).
 - "Letter at the top" defaults to Hide, and the banner word matches the case of the target bubble's letter (Milestone 5).

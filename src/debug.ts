@@ -1,11 +1,12 @@
 /* Test hooks: only when the page is opened with ?debug, or loaded by the tests (window.__BPP_TEST).
    The tests use exactly this API, so keep it stable. */
 import {
+  CANVAS_LIMIT_BUBBLES, CANVAS_LIMIT_CONFETTI, CANVAS_LIMIT_GLOWING, CANVAS_LIMIT_MIX, CANVAS_LIMIT_MOVING_OVER_CACHED,
   MAX_BUBBLES, MAX_PARTICLES, MIN_CATCH_SECONDS, PROMPT_REPEAT_SECONDS, SPAWN_DEPTH, SVG_LIMIT_MOVING, SVG_LIMIT_TOTAL,
   type Settings
 } from './config';
 import { els } from './dom';
-import { capHeight, forgetFontSize, layout } from './draw';
+import { capHeight, forgetFontSize, isGlowing, layout } from './draw';
 import { handlePointer, pauseGame, resumeGame, startGame, step } from './game';
 import { lookalike, pool } from './items';
 import {
@@ -33,6 +34,14 @@ function check(): string[] {
   const p = pool();
   if (s.bubbles.length > MAX_BUBBLES) errs.push('more than ' + MAX_BUBBLES + ' bubbles: ' + s.bubbles.length);
   if (s.particles.length > MAX_PARTICLES) errs.push('too many confetti pieces: ' + s.particles.length);
+  // canvas speed limits (measured on the iPad)
+  if (s.bubbles.length > CANVAS_LIMIT_BUBBLES) errs.push('over the canvas bubble limit: ' + s.bubbles.length);
+  if (s.particles.length > CANVAS_LIMIT_CONFETTI) errs.push('over the canvas confetti limit: ' + s.particles.length);
+  const glowing = s.bubbles.filter(isGlowing).length;
+  if (glowing > CANVAS_LIMIT_GLOWING) errs.push('over the canvas glow limit: ' + glowing);
+  if (s.bubbles.length + s.particles.length > CANVAS_LIMIT_MIX) {
+    errs.push('over the canvas mix limit: ' + (s.bubbles.length + s.particles.length));
+  }
   for (let i = 0; i < live.length; i++) {
     const a = live[i]!;
     if (!p.includes(a.key)) errs.push('bubble ' + a.key + ' not in item pool');
@@ -70,14 +79,18 @@ export function installDebug(): void {
     secondsCatchable,
     goneY,
     minCatchSeconds: MIN_CATCH_SECONDS,
-    limits: { maxBubbles: MAX_BUBBLES, maxParticles: MAX_PARTICLES, svgTotal: SVG_LIMIT_TOTAL, svgMoving: SVG_LIMIT_MOVING },
+    limits: {
+      maxBubbles: MAX_BUBBLES, maxParticles: MAX_PARTICLES, svgTotal: SVG_LIMIT_TOTAL, svgMoving: SVG_LIMIT_MOVING,
+      canvasBubbles: CANVAS_LIMIT_BUBBLES, canvasGlowing: CANVAS_LIMIT_GLOWING, canvasConfetti: CANVAS_LIMIT_CONFETTI,
+      canvasMix: CANVAS_LIMIT_MIX, canvasMovingOverCached: CANVAS_LIMIT_MOVING_OVER_CACHED
+    },
     sayLog,
     setSettings: (o: Partial<Settings>) => { Object.assign(state.settings, o); },
     state: () => {
       const s = state;
       return {
         bubbles: s.bubbles, target: s.target, upcoming: s.upcoming, simTime: s.simTime, W: s.W, H: s.H, R: s.R, FS: s.FS,
-        particles: s.particles.length, stars: s.stars, hintOn: s.hintOn, wrongsOnTarget: s.wrongsOnTarget,
+        particles: s.particles.length, glowing: s.bubbles.filter(isGlowing).length, stars: s.stars, hintOn: s.hintOn, wrongsOnTarget: s.wrongsOnTarget,
         missed: s.missed, muted: s.muted, starsShown: s.starsShown, sparkles: sparklesWanted(),
         paused: s.paused, running: s.running, ended: s.ended, uiLock: s.uiLock, sessionElapsed: s.sessionElapsed,
         gateOpen: gate.open, gateStep: gate.step, settingsOpen, settings: s.settings,

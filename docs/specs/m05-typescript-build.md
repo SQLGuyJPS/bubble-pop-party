@@ -1,6 +1,7 @@
 # Milestone 5: TypeScript, split into files, automatic deploy
 
-Status: built. Still to do on the iPad: the update test (section 10) and the speed test (section 7).
+Status: built. The speed test is done (canvas limits at 80% of the breaking points). Still to do on the iPad: the
+update test (section 10).
 
 ## Goal
 
@@ -161,7 +162,7 @@ Dependencies: `typescript` and `esbuild` only, as dev dependencies, with exact v
   - The offline helper tests run against `dist/sw.js`.
 - **"No network calls" and "no leading `/`"** are checked across `src/` and `index.html`.
 - **New `limits` area:** it fails if a simulated game goes over any limit set in `config.ts`. To start with, that
-  is the SVG limits (4,800 in total, 650 moving), plus the canvas limit once section 7 has measured it.
+  is the SVG limits (4,800 in total, 650 moving), plus the canvas limits section 7 measured (80% of each breaking point).
 - **Spoken-lines baseline:** before any code moves, save today's printed sample of spoken lines to
   `tests/fixtures/spoken-sample.txt`. Apart from the banner changes, the new build must print it identically.
 
@@ -221,7 +222,7 @@ Each step is its own commit, and all checks pass at every step from 3 on:
 - [ ] Merging to `main` publishes the game without any manual step.
 - [ ] On the iPad: the game updates to the new version (Settings shows the new version), plays normally, and works
       in Airplane Mode.
-- [ ] The speed test has been run on the iPad, the numbers are in the roadmap, and the canvas limits you chose are in
+- [x] The speed test has been run on the iPad, the numbers are in the roadmap, and the canvas limits you chose are in
       `config.ts` and tested.
 - [ ] README, AUDIO-GUIDE, CLAUDE.md and ROADMAP are updated.
 
