@@ -109,6 +109,11 @@ export function capHeight(fs: number): number {
 /* The big font loads from a file; once it's ready, it has to be measured again. */
 export function forgetFontSize(): void { capCache.fs = 0; }
 
+/* Only the bubble being asked for glows, and only while the hint is on. */
+export function isGlowing(b: Bubble): boolean {
+  return state.hintOn && b.state === 'live' && b.key === state.target.key;
+}
+
 export function drawBubble(b: Bubble): void {
   const { simTime, FS } = state;
   const p = pos(b);
@@ -130,7 +135,7 @@ export function drawBubble(b: Bubble): void {
   ctx.save();
   ctx.translate(p.x, p.y);
   ctx.rotate(rot);
-  const glowing = state.hintOn && b.state === 'live' && b.key === state.target.key;
+  const glowing = isGlowing(b);
   if (glowing) scale *= 1 + 0.05 * Math.sin(simTime * 6);   // gentle pulse
   ctx.scale(scale, scale);
   ctx.globalAlpha = alpha;

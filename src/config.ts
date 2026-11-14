@@ -36,9 +36,16 @@ export const GATE_HOLD_MS = 3000;
 export const GATE_IDLE_MS = 25000;       // a toddler wandering into the gate: close it and carry on playing
 
 /* Speed limits for the iPad 7th generation (see docs/ROADMAP.md, "Speed limits"). The tests fail if the game
-   goes over them. The canvas has no moving-object limit yet: the speed test page (perf/) measures it first. */
+   goes over them. */
 export const SVG_LIMIT_TOTAL = 4800;
 export const SVG_LIMIT_MOVING = 650;
+/* Canvas limits: 80% of the breaking points the speed test page (perf/) measured on the iPad, rounded down.
+   The design limits (MAX_BUBBLES, MAX_PARTICLES) must stay inside these. */
+export const CANVAS_LIMIT_BUBBLES = 8;          // plain bubbles drawn at once (measured 11)
+export const CANVAS_LIMIT_GLOWING = 3;          // bubbles with the hint glow and sparkles at once (measured 4)
+export const CANVAS_LIMIT_CONFETTI = 1471;      // confetti pieces at once (measured 1,839)
+export const CANVAS_LIMIT_MIX = 121;            // bubbles + confetti pieces together, about 1 : 15 (measured 152)
+export const CANVAS_LIMIT_MOVING_OVER_CACHED = 7;   // moving bubbles over 400 cached still ones (measured 9)
 
 /* =====================================================================
    Settings
