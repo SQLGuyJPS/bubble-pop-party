@@ -1,7 +1,6 @@
 # Milestone 5: TypeScript, split into files, automatic deploy
 
-Status: built. The speed test is done (canvas limits at 80% of the breaking points). Still to do on the iPad: the
-update test (section 10).
+Status: done. Built, merged, tested on the iPad (update, offline and speed test).
 
 ## Goal
 
@@ -216,15 +215,15 @@ Each step is its own commit, and all checks pass at every step from 3 on:
 
 ## 10. Done when
 
-- [ ] `npm test` ends with `0 problems found`, on your computer and in GitHub Actions.
-- [ ] The spoken-lines sample matches the baseline. The screenshots match, apart from the banner changes.
-- [ ] No file in `src/` is over about 400 lines, and `index.html` is markup only.
-- [ ] Merging to `main` publishes the game without any manual step.
-- [ ] On the iPad: the game updates to the new version (Settings shows the new version), plays normally, and works
+- [x] `npm test` ends with `0 problems found`, on your computer and in GitHub Actions.
+- [x] The spoken-lines sample matches the baseline. The screenshots match, apart from the banner changes.
+- [x] No file in `src/` is over about 400 lines, and `index.html` is markup only.
+- [x] Merging to `main` publishes the game without any manual step.
+- [x] On the iPad: the game updates to the new version (Settings shows the new version), plays normally, and works
       in Airplane Mode.
 - [x] The speed test has been run on the iPad, the numbers are in the roadmap, and the canvas limits you chose are in
       `config.ts` and tested.
-- [ ] README, AUDIO-GUIDE, CLAUDE.md and ROADMAP are updated.
+- [x] README, AUDIO-GUIDE, CLAUDE.md and ROADMAP are updated.
 
 ## 11. Risks
 
