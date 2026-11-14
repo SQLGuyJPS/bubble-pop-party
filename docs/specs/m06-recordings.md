@@ -1,7 +1,7 @@
 # Milestone 6: Record clips inside the game
 
-Status: **draft, waiting for agreement.** No game code is written until it is agreed. The questions in section 15
-need an answer first; where a section depends on one, it says "(Q n)" and describes the recommended answer.
+Status: **agreed** (2026-11-14). The answers to the questions are in section 17; where a section depends on one, it
+says "(Q n)". Step 2, the microphone test page, comes first; the Recordings screen waits for its results.
 
 ## Goal
 
@@ -77,7 +77,8 @@ Recordings screen can be reached without passing the gate.
 4. The microphone is **fully released** (section 7).
 5. The take is trimmed and levelled (section 7). If nothing was heard: "I didn't hear anything. Try again closer to
    the iPad." Nothing is saved, and any earlier recording stays.
-6. The take is saved and played back once (Q8). The row now shows "Your voice".
+6. The take is saved and played back once (Q8). The row now shows "Your voice". There is no "Record next" button:
+   the parent picks each row.
 
 **Re-record** only replaces the old take once the new one is saved. If the new take fails for any reason, the old one
 stays. **Delete** asks for confirmation on the row ("Delete your recording of 'Can you find the letter A?'"
@@ -424,8 +425,9 @@ Updated: `tests/screens.mjs` adds screenshots of the Recordings screen and the r
 Each step is its own commit, and all checks pass from step 3 on.
 
 1. This spec, agreed.
-2. **Microphone test page** (section 10), published (Q1). You run it on the iPad and send the results. The results
-   go into sections 7 and 10. **The Recordings screen waits for this.**
+2. **Microphone test page** (section 10), with this spec, in its own small pull request merged to `main` so it is
+   published (Q1). You run it on the iPad and send the results. The results go into sections 7 and 10. **The
+   Recordings screen waits for this.** The rest of the milestone is one pull request afterwards.
 3. Clip list: `src/clips.ts`; `speech.ts`, `recordings.mjs` and `update-audio.mjs` read it. Spoken sample identical.
 4. Storage: `store.ts`, fake IndexedDB in the harness, blocked and damaged storage checks.
 5. Playback order: in-app, then `audio/`, then voice, with stored clips put in by the tests.
@@ -465,94 +467,26 @@ Each step is its own commit, and all checks pass from step 3 on.
 - **The test page is a separate home-screen app**, so it can differ slightly from the game's. The Done-when list
   re-checks the sound in the real game.
 
-## 17. Questions for you
+## 17. Decisions (answers to the questions)
 
-Each one has a recommendation. Answer "as recommended" for any you're happy with.
+Agreed 2026-11-14. All as recommended, except Q8.
 
-**Q1. Getting the test page onto the iPad.** Pages only publishes from `main`, and the microphone only works over
-https, so the test page has to be merged before you can run it. That conflicts with "one pull request for the
-milestone".
-- (a) **Recommended:** a small pull request now with only the test page (plus this spec), merged to `main`. The rest
-  of the milestone is the one milestone pull request afterwards.
-- (b) Merge the milestone in two halves: test page and groundwork, then the screen.
-- (c) Keep one pull request, and you run the test page from your computer with an https tunnel. More setup for you,
-  and not the real published path.
-
-**Q2. Extra checks on the test page.** Besides the four you listed (mic prompt from the icon, sound after recording,
-iPadOS version, format), also check storage (IndexedDB, persist) and the share sheet / file load for the backup?
-They need no extra steps beyond two button taps. **Recommended: yes.**
-
-**Q3. After the milestone, delete the test page or keep it like `perf/`?** **Recommended: delete it** in the
-milestone's last step, once the results are written into this spec. It's throwaway, and keeping it means keeping it
-working.
-
-**Q4. Where the Recordings screen sits.** (a) **Recommended:** a button at the bottom of Settings that opens it in
-the same overlay, with "Back to settings". (b) A second button on the gate's success screen ("Settings" or
-"Recordings"). (a) adds no new path through the gate.
-
-**Q5. Toddler safety on the Recordings screen.** Today Settings has no idle timeout. Recommended: (1) **Delete
-asks for confirmation on the row**; (2) the Recordings screen **closes to the game after 3 minutes with no taps**,
-cancelling any take. Also add the same timeout to Settings? **Recommended: Recordings only** (no change to
-Settings in this milestone).
-
-**Q6. What the count counts.** The roadmap says "12 of 32", which is letters A–E **and** numbers 1–5. With the
-default settings (letters only) the game can play 17 clips. **Recommended:** the main count is the clips the
-**current settings** can play ("5 of 17"), with a second line "23 recorded in all". The list shows the current
-items, with a button to show all 36.
-
-**Q7. How recording stops.** The roadmap says "about 4 seconds". A slow, toddler-paced cheer ("Great!" … "W is for
-whale.") plus the moment after tapping Record can go past 4 s. **Recommended:** a **Stop** button, and an automatic
-stop at **6 seconds** (trimming removes the extra silence anyway). If the test page shows a level meter is safe (D),
-also stop by itself after 1.2 s of quiet once speech was heard, and show a simple meter. Otherwise, no meter.
-
-**Q8. After a take.** (a) **Recommended:** save it and **play it back once** automatically. Re-record is right there.
-(b) Play it back and ask **Keep / Try again** before saving. Safer, but one more tap for each of 17 to 110 clips.
-Related: a **"Record next"** button that moves straight on to the next unrecorded clip? **Recommended: yes**, it makes
-recording 17+ clips in one sitting much quicker.
-
-**Q9. Trimming and levelling.**
-- How it's stored: (a) **Recommended:** keep the original and store the trim points and gain, applied when played
-  (non-destructive, small, better rules can redo old takes, and the backup holds the originals). (b) Store a processed
-  WAV (simpler at play time, about 4 times bigger, the original is lost).
-- The rules are in section 7: silence = 10 dB over the background noise, 3 windows to start, 0.08 s / 0.15 s kept,
-  all clips at the **same speech loudness (−18 dBFS)** with a peak cap and a ×10 gain cap. Recommended as written,
-  tuned by ear on the iPad. Or would you rather only trim, with no volume change?
-
-**Q10. Nothing heard, or very quiet.** **Recommended:** nothing heard → not saved, "Try again" message; very quiet
-(needs more than ×10) → saved, with a "That was very quiet" note. Or refuse very quiet takes too?
-
-**Q11. The backup file format.**
-- (a) **Recommended: a ZIP** (`recordings.json` plus the original `.m4a` files named like `audio/` files). Opens on
-  any computer, about the same size as the recordings, needs a small ZIP writer (no library). Note: tapping a ZIP in
-  the Files app unpacks a copy beside it; the ZIP itself stays and is still what you load.
-- (b) One JSON file with the audio inside as text (base64). Simplest code, about a third bigger, can't be opened.
-- (c) A ZIP with its own ending (`.bubblepop`), so Files doesn't offer to unpack it. Might show up greyed out in the
-  file picker on some versions.
-- Also: because the ZIP's files are named like `audio/` files, a parent *could* copy them into `audio/` and push
-  them, which makes them **public**. **Recommended:** allow it, and README says plainly that this makes them public.
-  Or name them differently to stop that happening by accident?
-
-**Q12. Loading a backup when the iPad already has some of the same clips.** (a) **Recommended:** ask, with
-**Replace those** / **Keep mine, add only the new ones** / **Cancel**. (b) Always replace. (c) Keep whichever was
-recorded more recently. Also: should loading offer **"Replace everything"** (delete the clips that aren't in the
-file)? **Recommended: no.** That's what Delete all is for (Q15).
-
-**Q13. Storage full.** (a) **Recommended:** keep the old take, save nothing, show the message in section 9. (b) Also
-show how much space recordings use (from `storage.estimate()`) at the bottom of the screen. Recommended: (a) plus
-(b). Full storage is unlikely (17 clips are about 1 MB, all 110 about 7 MB), but the message must be clear.
-
-**Q14. When a clip's words change in a later milestone** (for example "X is for box" becoming "xylophone" in
-Milestone 12, to match a picture). (a) **Recommended:** the old recording **isn't played** (the child would hear words
-that don't match the picture). The row says "The words have changed. Please re-record.", and the clip falls back.
-(b) Keep playing the old recording until it's re-recorded.
-
-**Q15. "Delete all recordings"?** Not in the roadmap. **Recommended: yes**, at the bottom of the screen, behind a
-confirmation that says to save a backup first. It's useful before loading a backup cleanly, or before handing the
-iPad on.
-
-**Q16. No new settings.** **Recommended:** no "use my recordings: on/off" setting. Delete, or the backup, covers
-switching them off. Or do you want an on/off switch (for example to compare with the computer voice)?
-
-**Q17. Recording from a Safari tab.** The home-screen app and a Safari tab keep separate recordings (section 6).
-**Recommended:** recording works in both, with the note on screen in a Safari tab. Or only allow recording from the
-home-screen icon?
+| # | Question | Decision |
+| --- | --- | --- |
+| Q1 | Getting the test page onto the iPad | A small pull request now with only the test page and this spec, merged to `main`. The rest of the milestone is one pull request afterwards |
+| Q2 | Extra checks on the test page | Yes: also IndexedDB, persist, share a file and load it back |
+| Q3 | Keep or delete the test page | Delete it in the milestone's last step, once its results are in this spec |
+| Q4 | Where the Recordings screen sits | A button at the bottom of Settings, same overlay, "Back to settings" |
+| Q5 | Toddler safety | Delete asks for confirmation on the row. The Recordings screen closes to the game after 3 minutes with no taps. Settings unchanged |
+| Q6 | What the count counts | The clips the current settings can play ("5 of 17"), plus "N recorded in all". Current items listed, with a button to show all 36 |
+| Q7 | How recording stops | A Stop button and an automatic stop at 6 seconds. Stopping on silence and a level meter only if test D shows a meter is safe |
+| Q8 | After a take | Save it and play it back once (a). **No "Record next" button** |
+| Q9 | Trimming and levelling | Keep the original, store trim points and gain. Rules as in section 7, every clip at −18 dBFS speech loudness, tuned by ear |
+| Q10 | Nothing heard / very quiet | Nothing heard: not saved. Very quiet: saved, with a note |
+| Q11 | Backup file format | A plain ZIP with `recordings.json` and the originals named like `audio/` files. The README says copying them into `audio/` makes them public |
+| Q12 | Loading over existing clips | Ask: Replace those / Keep mine, add only the new ones / Cancel. No "replace everything" |
+| Q13 | Storage full | Keep the old take, save nothing, clear message. Show the space recordings use |
+| Q14 | Words changed later | The old recording isn't played; the row asks for a re-record |
+| Q15 | Delete all | Yes, at the bottom of the screen, with a confirmation that says to save a backup first |
+| Q16 | New settings | None |
+| Q17 | Recording from a Safari tab | Allowed, with the separate-storage note |

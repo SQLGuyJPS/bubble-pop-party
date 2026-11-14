@@ -1,6 +1,7 @@
 // Draws the app icons (a pink bubble with an "A" on a blue sky) and saves them as PNG files.
 //
-//   node tools/make-icons.mjs
+//   node tools/make-icons.mjs             the game's icons, in icons/
+//   node tools/make-icons.mjs --mictest   the microphone test page's icons (an "M" instead of the "A"), in mictest/
 //
 // This needs nothing installed: it only uses what comes with Node. The icons are written to
 // icons/ and are small enough to commit. Run it again after changing the drawing below.
@@ -10,7 +11,8 @@ import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
-const outDir = path.join(root, 'icons');
+const mictest = process.argv.includes('--mictest');
+const outDir = path.join(root, mictest ? 'mictest' : 'icons');
 
 const SIZES = { 'apple-touch-icon.png': 180, 'icon-192.png': 192, 'icon-512.png': 512 };
 const SAMPLES = 3; // 3x3 samples per pixel gives smooth edges
@@ -61,13 +63,21 @@ function colourAt(x, y) {
     if (sx * sx + sy * sy < 1) c = mix(c, WHITE, 0.65);
 
     // the letter A: two legs and a crossbar, drawn as thick rounded lines
+    // (or an M for the microphone test page, so its home-screen icon isn't mixed up with the game's)
     const w = 0.04;
     const apex = [0.5, 0.31], left = [0.375, 0.69], right = [0.625, 0.69];
-    const dA = Math.min(
-      segDist(x, y, apex[0], apex[1], left[0], left[1]),
-      segDist(x, y, apex[0], apex[1], right[0], right[1]),
-      segDist(x, y, 0.42, 0.58, 0.58, 0.58)
-    );
+    const dA = mictest
+      ? Math.min(
+        segDist(x, y, 0.38, 0.69, 0.38, 0.33),
+        segDist(x, y, 0.38, 0.33, 0.5, 0.55),
+        segDist(x, y, 0.5, 0.55, 0.62, 0.33),
+        segDist(x, y, 0.62, 0.33, 0.62, 0.69)
+      )
+      : Math.min(
+        segDist(x, y, apex[0], apex[1], left[0], left[1]),
+        segDist(x, y, apex[0], apex[1], right[0], right[1]),
+        segDist(x, y, 0.42, 0.58, 0.58, 0.58)
+      );
     if (dA < w) c = WHITE;
   }
   return c;
@@ -129,5 +139,5 @@ fs.mkdirSync(outDir, { recursive: true });
 for (const [name, size] of Object.entries(SIZES)) {
   const data = png(size);
   fs.writeFileSync(path.join(outDir, name), data);
-  console.log(`icons/${name}  ${size}x${size}  ${data.length} bytes`);
+  console.log(`${path.basename(outDir)}/${name}  ${size}x${size}  ${data.length} bytes`);
 }

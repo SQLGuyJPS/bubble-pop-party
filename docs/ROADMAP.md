@@ -8,7 +8,7 @@ the end of every one.
 | # | Milestone | Size | Status |
 | --- | --- | --- | --- |
 | 5 | TypeScript, split into files, automatic deploy | Large | Done |
-| 6 | Record clips inside the game | Large | Planned |
+| 6 | Record clips inside the game | Large | In progress |
 | 7 | Spell my name | Medium | Planned |
 | 8 | Counting | Medium | Planned |
 | 9 | Capital-to-small matching | Small | Planned |
@@ -129,6 +129,8 @@ only rewritten once.
 - The workflow publishes the game, and the iPad updates to it and works with Airplane Mode on.
 
 ## Milestone 6: Record clips inside the game
+
+**Full spec:** [`docs/specs/m06-recordings.md`](specs/m06-recordings.md) (agreed).
 
 **What you get:** a **Recordings** screen in the parent area, with one row per clip. Each row shows the words to
 say and has Record, Play, Re-record and Delete buttons, plus a count like "12 of 32 recorded". Recording stops by

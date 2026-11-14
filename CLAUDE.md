@@ -65,7 +65,8 @@ saved its settings. Say so in the pull request and the README.
 - `tools/build.mjs` builds `dist/`; the recordings list and the offline file list and version are made there.
 - `tests/harness.mjs` is the fake browser; `tests/run.mjs` runs one file per area. The tests load `dist/game.js`
   and talk to the game only through the `window.__bpp` hooks in `src/debug.ts`.
-- `perf/` is the speed test page. `index.html` and `sw.js` must stay at the site root.
+- `perf/` is the speed test page. `mictest/` is the microphone test page (Milestone 6 only, then deleted); neither
+  is saved for offline use. `index.html` and `sw.js` must stay at the site root.
 
 ## Writing docs
 

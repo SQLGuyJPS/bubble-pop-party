@@ -115,6 +115,7 @@ The same checks run on GitHub for every push and pull request.
 | `fonts/` | The Andika font and its license (SIL Open Font License) |
 | `audio/` | Your own recordings (see AUDIO-GUIDE.md) |
 | `perf/` | The speed test page (see "Speed test") |
+| `mictest/` | The microphone test page, for Milestone 6 only (see "Microphone test") |
 | `tools/build.mjs` | Builds the game into `dist/` (`npm run build`; `npm run dev` also serves it) |
 | `tools/update-audio.mjs` | Lists which recordings you have, and the words to record |
 | `tools/make-icons.mjs` | Draws the icon PNGs |
@@ -209,6 +210,24 @@ Results from the family iPad (iPad 7th generation):
 The game itself shows at most 4 bubbles, only 1 of them glowing, and 60 confetti pieces, so it stays well under every
 limit. If you run the test again on a different iPad, the limits are in `src/config.ts` and the measured numbers are
 in `tests/limits.mjs`.
+
+## Microphone test
+
+Before the game gets its own Recordings screen (Milestone 6), the page
+<https://sqlguyjps.github.io/bubble-pop-party/mictest/> checks that the iPad can record from a home-screen icon
+without the game's sounds getting quieter afterwards. It is not linked from the game and not saved for offline use,
+and it will be deleted when Milestone 6 is finished.
+
+1. Open the page in Safari on the iPad.
+2. Tap the Share button, then **Add to Home Screen**, then **Add**. A new icon called **Mic test** appears (a pink
+   bubble with an **M**). It is separate from the game.
+3. Close Safari and open **Mic test** from its icon.
+4. Do the steps on the page in order. Before each of tests A to D, close Mic test fully (swipe up from the bottom and
+   push it away) and open it again. The page remembers your answers.
+5. Tap **Results** and take a screenshot. Send the screenshot.
+6. When you are done, you can delete the Mic test icon (press and hold it, then **Remove App**).
+
+The page records only for the test. Nothing it records is saved or sent anywhere.
 
 ## How the offline copy works
 

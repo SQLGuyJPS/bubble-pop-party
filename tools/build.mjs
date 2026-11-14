@@ -6,7 +6,8 @@
 // What it does:
 //   1. src/main.ts -> dist/game.js (one script) and src/styles.css -> dist/game.css
 //   2. copies index.html, manifest.webmanifest, icons/, fonts/ and your recordings from audio/
-//   3. perf/ -> dist/perf/ (the speed test page; not saved for offline use)
+//   3. perf/ -> dist/perf/ (the speed test page) and mictest/ -> dist/mictest/ (the microphone test page,
+//      Milestone 6 only); neither is saved for offline use
 //   4. src/sw.ts -> dist/sw.js, the offline helper, with the list of files and a version made from their contents
 import fs from 'node:fs';
 import path from 'node:path';
@@ -40,6 +41,7 @@ function copyFiles(clips) {
   fs.rmSync(path.join(dist, 'audio'), { recursive: true, force: true });
   for (const file of Object.values(clips)) copy(file);
   copy('perf/index.html');
+  copy('mictest', (f) => /\.(html|png|webmanifest)$/.test(f));
 }
 
 async function buildServiceWorker() {
@@ -63,7 +65,8 @@ function options(clips) {
     entryPoints: [
       { in: 'src/main.ts', out: 'game' },
       { in: 'src/styles.css', out: 'game' },
-      ...(fs.existsSync(path.join(root, 'perf/perf.ts')) ? [{ in: 'perf/perf.ts', out: 'perf/perf' }] : [])
+      ...(fs.existsSync(path.join(root, 'perf/perf.ts')) ? [{ in: 'perf/perf.ts', out: 'perf/perf' }] : []),
+      ...(fs.existsSync(path.join(root, 'mictest/mictest.ts')) ? [{ in: 'mictest/mictest.ts', out: 'mictest/mictest' }] : [])
     ],
     outdir: dist,
     bundle: true,
@@ -110,7 +113,7 @@ if (!dev) {
   await ctx.watch();
   // esbuild only watches the files it bundles: rebuild when the page, icons or font change too
   // (a new recording needs a restart, because the recordings list is fixed when dev starts)
-  for (const rel of ['index.html', 'manifest.webmanifest', 'icons', 'fonts', 'perf/index.html']) {
+  for (const rel of ['index.html', 'manifest.webmanifest', 'icons', 'fonts', 'perf/index.html', 'mictest/index.html']) {
     const p = path.join(root, rel);
     if (fs.existsSync(p)) fs.watch(p, () => { ctx.rebuild().catch(() => {}); });
   }

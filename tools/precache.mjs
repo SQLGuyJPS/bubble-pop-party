@@ -3,13 +3,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 
-/** Every file the game needs offline: everything in dist/ except the speed test page, source maps and sw.js. */
+/** Every file the game needs offline: everything in dist/ except the test pages (perf/, mictest/), source maps and sw.js. */
+export const TEST_PAGES = ['perf', 'mictest'];   // published, but never saved for offline use
+
 export function precacheFiles(dist) {
   const out = [];
   const walk = (rel) => {
     for (const name of fs.readdirSync(path.join(dist, rel)).sort()) {
       const r = rel ? `${rel}/${name}` : name;
-      if (fs.statSync(path.join(dist, r)).isDirectory()) { if (r !== 'perf') walk(r); continue; }
+      if (fs.statSync(path.join(dist, r)).isDirectory()) { if (!TEST_PAGES.includes(r)) walk(r); continue; }
       if (r === 'sw.js' || r.endsWith('.map')) continue;
       out.push(r);
     }

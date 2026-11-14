@@ -24,7 +24,20 @@ export default async function () {
     const files = precacheFiles(dist);
     expect(JSON.stringify(listed) === JSON.stringify(['./', ...files]), 'dist/sw.js does not list exactly the files in dist/: ' + listed.join(', '));
     expect(version === versionFor(dist, files), 'the version in dist/sw.js does not match the files');
-    expect(!listed.some((f) => f.startsWith('perf/') || f.endsWith('.map') || f === 'sw.js'), 'dist/sw.js saves the speed test, a source map or itself');
+    expect(!listed.some((f) => f.startsWith('perf/') || f.startsWith('mictest/') || f.endsWith('.map') || f === 'sw.js'), 'dist/sw.js saves a test page, a source map or itself');
+    // the microphone test page is published (with its own home-screen setup), but never saved for offline use
+    for (const f of ['mictest/index.html', 'mictest/mictest.js', 'mictest/manifest.webmanifest', 'mictest/apple-touch-icon.png']) {
+      expect(fs.existsSync(path.join(dist, f)), 'the microphone test page is missing ' + f);
+    }
+    {
+      const mt = read('mictest/index.html');
+      const links = [...mt.matchAll(/(?:src|href)="([^"#]+)"/g)].map((m) => m[1]);
+      expect(links.every(relative), 'mictest/index.html has a link starting with "/" or a web address');
+      expect(!links.some((l) => /^\.\.\/?(index\.html)?$/.test(l)) && !html.includes('mictest'), 'the game and the microphone test page must not link to each other');
+      const mm = JSON.parse(read('mictest/manifest.webmanifest'));
+      expect(mm.scope === './' && mm.start_url === './' && mm.name === 'Mic test', 'the microphone test page must be its own home-screen app, apart from the game');
+      expect(pngSize('mictest/apple-touch-icon.png') === '180x180', 'mictest apple-touch-icon must be 180x180');
+    }
     expect(listed.every(relative), 'sw.js has a path starting with "/" or a web address (breaks on GitHub Pages)');
     expect(listed.includes('./') && listed.includes('index.html') && listed.includes('game.js') && listed.includes('game.css'), 'sw.js does not save the start page and its script and styles');
     for (const f of listed) if (f !== './') expect(fs.existsSync(path.join(dist, f)), 'sw.js lists a missing file: ' + f);
@@ -69,13 +82,14 @@ export default async function () {
     expect(/apple-mobile-web-app-capable" content="yes"/.test(html), 'missing the iPad full-screen tag');
     const pageLinks = [...html.matchAll(/(?:src|href)="([^"#]+)"/g)].map((m) => m[1]);
     expect(pageLinks.every(relative), 'index.html has a link starting with "/" or a web address: ' + pageLinks.filter((p) => !relative(p)).join(', '));
-    // no network calls, and no path starting with "/", anywhere in the game's own code
-    for (const f of fs.readdirSync(path.join(root, 'src'))) {
-      if (f === 'sw.ts') continue;    // the offline helper downloads the game's own files; that is its job
-      const text = read('src/' + f).replace(/\/\*[\s\S]*?\*\/|(^|[\s;])\/\/[^\n]*/g, '$1');   // without comments
-      expect(!/\bfetch\((?!file\))|XMLHttpRequest|WebSocket|sendBeacon|EventSource|navigator\.connection/.test(text), 'src/' + f + ' makes a network call');
-      expect(!/https?:\/\//.test(text), 'src/' + f + ' has a web address in its code');
-      expect(!/(?:url\(|src=|href=|['"`])\/[a-z]/i.test(text), 'src/' + f + ' has a path starting with "/"');
+    // no network calls, and no path starting with "/", anywhere in the game's own code or the test pages
+    const sources = ['src', 'perf', 'mictest'].flatMap((d) => fs.readdirSync(path.join(root, d)).filter((f) => /\.(ts|css)$/.test(f)).map((f) => d + '/' + f));
+    for (const f of sources) {
+      if (f === 'src/sw.ts') continue;    // the offline helper downloads the game's own files; that is its job
+      const text = read(f).replace(/\/\*[\s\S]*?\*\/|(^|[\s;])\/\/[^\n]*/g, '$1');   // without comments
+      expect(!/\bfetch\((?!file\))|XMLHttpRequest|WebSocket|sendBeacon|EventSource|navigator\.connection/.test(text), f + ' makes a network call');
+      expect(!/https?:\/\//.test(text), f + ' has a web address in its code');
+      expect(!/(?:url\(|src=|href=|['"`])\/[a-z]/i.test(text), f + ' has a path starting with "/"');
     }
 
     // run the worker against a fake browser
