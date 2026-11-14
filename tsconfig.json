@@ -13,6 +13,6 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src/**/*.ts", "perf/**/*.ts"],
+  "include": ["src/**/*.ts", "perf/**/*.ts", "mictest/**/*.ts"],
   "exclude": ["src/sw.ts"]
 }
