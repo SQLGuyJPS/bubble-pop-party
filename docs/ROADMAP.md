@@ -1,12 +1,13 @@
 # Bubble Pop Party roadmap
 
-Milestones 1 to 4 (the base game, the parent area, recordings from files, offline install) are done.
+Milestones 1 to 5 (the base game, the parent area, recordings from files, offline install, the TypeScript build) are
+done.
 This plan covers what comes next. Each milestone is one pull request: the game works and all checks pass at
 the end of every one.
 
 | # | Milestone | Size | Status |
 | --- | --- | --- | --- |
-| 5 | TypeScript, split into files, automatic deploy | Large | Built; speed test done; waiting for the iPad update test |
+| 5 | TypeScript, split into files, automatic deploy | Large | Done |
 | 6 | Record clips inside the game | Large | Planned |
 | 7 | Spell my name | Medium | Planned |
 | 8 | Counting | Medium | Planned |
