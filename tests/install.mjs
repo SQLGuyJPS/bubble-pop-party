@@ -38,6 +38,27 @@ export default async function () {
       expect(mm.scope === './' && mm.start_url === './' && mm.name === 'Mic test', 'the microphone test page must be its own home-screen app, apart from the game');
       expect(pngSize('mictest/apple-touch-icon.png') === '180x180', 'mictest apple-touch-icon must be 180x180');
     }
+    {
+      // the microphone test page names the device and version correctly, and its .zip survives a round trip
+      const { build } = await import('esbuild');
+      const out = await build({ entryPoints: [path.join(root, 'mictest/files.ts')], bundle: true, format: 'esm', write: false, logLevel: 'silent' });
+      const m = await import('data:text/javascript;base64,' + Buffer.from(out.outputFiles[0].text).toString('base64'));
+      const phone = m.deviceInfo('Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.0.1 Mobile/15E148 Safari/604.1', 5);
+      expect(phone.kind === 'iPhone' && phone.os === '27.0.1', 'mictest: an iPhone on iOS 27 (which says "OS 18_7") must show as iPhone 27.0.1, not ' + JSON.stringify(phone));
+      const pad = m.deviceInfo('Mozilla/5.0 (iPad; CPU OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.7 Mobile/15E148 Safari/604.1', 5);
+      expect(pad.kind === 'iPad' && pad.os === '18.7', 'mictest: an iPad on iPadOS 18.7 must show as iPad 18.7, not ' + JSON.stringify(pad));
+      const desk = m.deviceInfo('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.7 Safari/605.1.15', 5);
+      expect(desk.kind === 'iPad', 'mictest: an iPad asking for desktop sites must still show as an iPad');
+      expect(m.extensionFor('audio/mp4') === 'm4a', 'mictest: an AAC recording must be saved as .m4a');
+      const audio = new Uint8Array(70000).map((_, i) => (i * 13 + 7) & 255);
+      const zip = m.makeZip([{ name: 'recording.m4a', data: audio }, { name: 'about.json', data: new TextEncoder().encode('{"device":"iPhone"}') }]);
+      const back = m.readZip(zip);
+      expect(back && back.length === 2 && back[0].name === 'recording.m4a' && Buffer.from(back[0].data).equals(Buffer.from(audio)) &&
+        new TextDecoder().decode(back[1].data) === '{"device":"iPhone"}', 'mictest: a recording in a .zip does not come back the same');
+      const damaged = zip.slice(); damaged[100] ^= 1;
+      expect(m.readZip(damaged) === null && m.readZip(new Uint8Array(10)) === null, 'mictest: a damaged or wrong file must be refused, not played');
+      expect(Buffer.from(m.fromBase64(m.toBase64(audio))).equals(Buffer.from(audio)), 'mictest: the kept recording does not come back the same');
+    }
     expect(listed.every(relative), 'sw.js has a path starting with "/" or a web address (breaks on GitHub Pages)');
     expect(listed.includes('./') && listed.includes('index.html') && listed.includes('game.js') && listed.includes('game.css'), 'sw.js does not save the start page and its script and styles');
     for (const f of listed) if (f !== './') expect(fs.existsSync(path.join(dist, f)), 'sw.js lists a missing file: ' + f);
