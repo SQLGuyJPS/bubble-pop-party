@@ -5,9 +5,9 @@ import { audioCtx } from '../src/sound';
 
 export type Variant = 'A' | 'B' | 'C' | 'D';
 export const VARIANTS: Record<Variant, { title: string; detail: string }> = {
-  A: { title: 'Plain', detail: 'The microphone with the iPad\'s normal settings.' },
+  A: { title: 'Plain', detail: 'The microphone with the device\'s normal settings.' },
   B: { title: 'Voice processing off', detail: 'Echo cancelling, noise reduction and automatic volume turned off.' },
-  C: { title: 'Audio session', detail: 'As B, and the page tells the iPad "playing and recording" while recording, then "playing only" after.' },
+  C: { title: 'Audio session', detail: 'As B, and the page tells the device "playing and recording" while recording, then "playing only" after.' },
   D: { title: 'Level meter', detail: 'As B, with a live level meter (a second sound system listening to the microphone).' }
 };
 
@@ -26,16 +26,6 @@ export function isStandalone(): boolean {
   let media = false;
   try { media = matchMedia('(display-mode: standalone)').matches; } catch { /* old browser */ }
   return n.standalone === true || media;
-}
-
-/* The version as the browser reports it. Home-screen apps often leave it out, so the page also asks. */
-export function versionFromBrowser(): string {
-  const ua = navigator.userAgent;
-  const os = /OS (\d+)[_.](\d+)(?:[_.](\d+))? like Mac/.exec(ua);
-  if (os) return os.slice(1).filter(Boolean).join('.');
-  const v = /Version\/(\d+(?:\.\d+)*)/.exec(ua);
-  if (v) return v[1] ?? '';
-  return '';
 }
 
 export const FORMATS = ['audio/mp4', 'audio/mp4;codecs=mp4a.40.2', 'audio/aac', 'audio/webm;codecs=opus', 'audio/wav'];
@@ -254,54 +244,4 @@ export async function checkPersist(): Promise<{ persist: string; persisted: stri
     }
   } catch (e) { out.free = describeError(e); }
   return out;
-}
-
-/* ---- A tiny ZIP (one stored file), to check that the share sheet and the file picker handle the backup file ---- */
-
-const CRC = (() => {
-  const t = new Uint32Array(256);
-  for (let n = 0; n < 256; n++) {
-    let c = n;
-    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-    t[n] = c >>> 0;
-  }
-  return t;
-})();
-function crc32(b: Uint8Array): number {
-  let c = 0xffffffff;
-  for (const x of b) c = (CRC[(c ^ x) & 0xff] ?? 0) ^ (c >>> 8);
-  return (c ^ 0xffffffff) >>> 0;
-}
-
-export function makeZip(name: string, text: string): Uint8Array<ArrayBuffer> {
-  const nameB = new TextEncoder().encode(name);
-  const data = new TextEncoder().encode(text);
-  const crc = crc32(data);
-  const local = 30 + nameB.length, central = 46 + nameB.length;
-  const out = new Uint8Array(local + data.length + central + 22);
-  const v = new DataView(out.buffer);
-  let o = 0;
-  const u32 = (x: number): void => { v.setUint32(o, x, true); o += 4; };
-  const u16 = (x: number): void => { v.setUint16(o, x, true); o += 2; };
-  const bytes = (b: Uint8Array): void => { out.set(b, o); o += b.length; };
-  u32(0x04034b50); u16(20); u16(0x0800); u16(0); u16(0); u16(0x21);
-  u32(crc); u32(data.length); u32(data.length); u16(nameB.length); u16(0); bytes(nameB); bytes(data);
-  const centralAt = o;
-  u32(0x02014b50); u16(20); u16(20); u16(0x0800); u16(0); u16(0); u16(0x21);
-  u32(crc); u32(data.length); u32(data.length); u16(nameB.length); u16(0); u16(0); u16(0); u16(0); u32(0); u32(0);
-  bytes(nameB);
-  u32(0x06054b50); u16(0); u16(0); u16(1); u16(1); u32(central); u32(centralAt); u16(0);
-  return out;
-}
-
-/* Reads the first file of a ZIP that makeZip wrote (stored, not compressed). */
-export function readZip(bytes: Uint8Array): { name: string; text: string } | null {
-  if (bytes.length < 30) return null;
-  const v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  if (v.getUint32(0, true) !== 0x04034b50 || v.getUint16(8, true) !== 0) return null;
-  const size = v.getUint32(18, true), nameLen = v.getUint16(26, true), extra = v.getUint16(28, true);
-  const start = 30 + nameLen + extra;
-  if (start + size > bytes.length) return null;
-  const dec = new TextDecoder();
-  return { name: dec.decode(bytes.subarray(30, 30 + nameLen)), text: dec.decode(bytes.subarray(start, start + size)) };
 }

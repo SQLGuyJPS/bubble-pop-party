@@ -6,9 +6,10 @@
 import { audioCtx, ensureAudio, master, playFanfare, playPop } from '../src/sound';
 import { initSpeech, say, stopSpeech } from '../src/speech';
 import {
-  VARIANTS, audioSessionType, canRecord, checkIndexedDB, checkPersist, chimeWav, isStandalone, makeZip, micPermission,
-  readZip, recordTake, supportedFormats, touchMic, versionFromBrowser, type Take, type Variant
+  VARIANTS, audioSessionType, canRecord, checkIndexedDB, checkPersist, chimeWav, isStandalone, micPermission,
+  recordTake, supportedFormats, touchMic, type Take, type Variant
 } from './checks';
+import { deviceInfo, describeDevice, extensionFor, fromBase64, makeZip, readZip, toBase64 } from './files';
 
 type Answer = 'same' | 'quieter' | 'earpiece' | 'none';
 interface Run extends Omit<Take, 'blob'> {
@@ -23,15 +24,23 @@ interface Run extends Omit<Take, 'blob'> {
   voice?: Answer;
   dotGone?: 'yes' | 'no';
 }
+/* Step 8: a recording made on one device (the iPhone), sent with the share sheet, loaded and played on another (the
+   iPad). `from` describes the device that recorded it. */
+interface Moved { from: string; mime: string; seconds: number; decodes: string; standalone: boolean; heard?: 'clear' | 'quiet' | 'none' }
 interface Saved {
-  version?: string;
+  version?: 'right' | 'different';   // the device and version shown match Settings, General, About
   lastRunSession?: string;
   runs: Partial<Record<Variant, Run>>;
   prompt?: { before: string; result: string; answer?: 'asked' | 'not' };
   extras?: { idb: string; persist: string; persisted: string; free: string; share?: string; load?: string; token?: string };
+  sent?: string;               // step 8 on the recording device: did the share sheet take the recording
+  moved?: Moved;               // step 8 on the playing device
 }
+/* The last recording, kept apart from the answers so step 8 can send it after the page was closed and opened. */
+interface LastTake { mime: string; b64: string; device: string; when: string }
 
-const KEY = 'bubblePopParty.mictest.v1';
+const KEY = 'bubblePopParty.mictest.v2';            // v1 answers were made before the voice was fixed: not reused
+const TAKE_KEY = 'bubblePopParty.mictest.lastTake';
 const SESSION = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);   // this opening of the page
 const RECORD_MS = 4000;
 const SAY = 'Can you find the letter B?';
@@ -45,15 +54,24 @@ function load(): Saved {
 }
 let saved = load();
 function save(): void { try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch { /* shown on the results screen */ } }
+function lastTake(): LastTake | null {
+  try {
+    const t = JSON.parse(localStorage.getItem(TAKE_KEY) || 'null') as LastTake | null;
+    return t && typeof t.b64 === 'string' && typeof t.mime === 'string' ? t : null;
+  } catch { return null; }
+}
+const DEVICE = deviceInfo(navigator.userAgent, navigator.maxTouchPoints || 0);
+const THIS_DEVICE = describeDevice(DEVICE);
 
 /* ---- what is on screen ---- */
-type View = 'home' | 'version' | 'run' | 'prompt' | 'extras' | 'results';
+type View = 'home' | 'version' | 'run' | 'prompt' | 'extras' | 'move' | 'results';
 let view: View = 'home';
 let variant: Variant = 'A';
 let beforePlayed = false, afterPlayed = false, recording = false, confirmReset = false;
 let notFresh = false;                 // a test was already done since this opening, when this test's screen opened
 let stopRecording: (() => void) | null = null;
 let level = 0, recordEnds = 0;
+let movedBuffer: AudioBuffer | null = null;   // step 8: the loaded recording, ready to play inside a tap
 
 const $ = (id: string): HTMLElement => document.getElementById(id) as HTMLElement;
 const esc = (s: unknown): string => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] ?? c);
@@ -70,26 +88,30 @@ function homeView(): string {
   ${sa ? '' : `<ol class="steps"><li>Tap the Share button (the square with an arrow) at the top of Safari.</li>
     <li>Tap <b>Add to Home Screen</b>, then <b>Add</b>.</li><li>Close Safari, and open <b>Mic test</b> from the home screen
     (the pink bubble with an <b>M</b>).</li></ol>`}
-  <p>Do the steps in order. <b>Before each of tests A to D, close Mic test fully</b> (swipe up from the bottom, then push it
-    away) and open it again from its icon. Turn the volume up to about half, and take any headphones off.</p>
+  <p>This is: <b>${esc(THIS_DEVICE)}</b></p>
+  <p>Do steps 1 to 7 on the <b>iPhone</b> you will record on. Step 8 uses both: send a recording from the iPhone, then
+    play it in Mic test on the <b>iPad</b> (add Mic test to the iPad's home screen too, and do steps 1, 7 and 8 there).</p>
+  <p><b>Before each of tests A to D, close Mic test fully</b> (swipe up from the bottom, then push it
+    away) and open it again from its icon. Turn the volume up to about half, turn off silent mode, and take any
+    headphones off.</p>
   <div class="list">
-    ${btn('go-version', tick(!!saved.version) + '1. iPad version')}
+    ${btn('go-version', tick(!!saved.version) + '1. Device and version')}
     ${(['A', 'B', 'C', 'D'] as Variant[]).map((v, i) => btn('go-run', tick(run(v)) + `${i + 2}. Test ${v}: ${VARIANTS[v].title}`, { val: v })).join('')}
     ${btn('go-prompt', tick(!!saved.prompt?.answer) + '6. Does it ask for the microphone again?')}
     ${btn('go-extras', tick(!!saved.extras?.load) + '7. Storage and sharing')}
+    ${btn('go-move', tick(!!saved.sent || !!saved.moved?.heard) + '8. Play an iPhone recording on the iPad')}
     ${btn('go-results', 'Results', { big: true })}
   </div>
   <p class="small">${confirmReset ? btn('reset-yes', 'Yes, forget all answers') + btn('reset-no', 'Keep them') : btn('reset', 'Start over')}</p>`;
 }
 
 function versionView(): string {
-  const fromBrowser = versionFromBrowser();
-  const choices = ['17 or older', '18.0', '18.1', '18.2', '18.3', '18.4', '18.5', '18.6', '18.7', 'Other'];
-  return `<h1>1. iPad version</h1>
-  <p>The browser reports: <b>${esc(fromBrowser || 'nothing (normal for home-screen apps)')}</b></p>
-  <p>Open the <b>Settings</b> app, then <b>General</b>, then <b>About</b>, and tap the number shown next to
-    <b>iPadOS Version</b>:</p>
-  <p>${choices.map((c) => btn('version', c, { val: c, sel: saved.version === c })).join('')}</p>${back()}`;
+  return `<h1>1. Device and version</h1>
+  <p>The browser says this is: <b>${esc(THIS_DEVICE)}</b></p>
+  <p>Open the <b>Settings</b> app, then <b>General</b>, then <b>About</b>. Is it the same device, and does the
+    <b>${DEVICE.kind === 'iPad' ? 'iPadOS' : 'iOS'} Version</b> start with <b>${esc(DEVICE.os || '?')}</b>?</p>
+  <p>${btn('version', 'Yes, that\'s right', { val: 'right', sel: saved.version === 'right' })}${btn('version', 'No, it\'s different', { val: 'different', sel: saved.version === 'different' })}</p>
+  ${saved.version === 'different' ? '<p class="status check">Please tell us the device and the version from Settings with your results.</p>' : ''}${back()}`;
 }
 
 const ANSWERS: [Answer, string][] = [['same', 'Same as before'], ['quieter', 'Quieter'], ['earpiece', 'From the earpiece (top)'], ['none', 'No sound']];
@@ -113,8 +135,8 @@ function runView(): string {
   ${notFresh ? '<p class="status check">You already did a test since opening Mic test. For a fair test, close it fully and open it again first.</p>' : ''}
   ${canRecord() ? '' : '<p class="status check">This browser can\'t record (no MediaRecorder or microphone access).</p>'}
   <h2>Step 1. Before</h2>
-  <p>Tap and listen: a pop, a ta-da, a chime, then the computer voice. Notice how loud they are, and that they come from
-    the speakers at the sides.</p>
+  <p>Tap and listen: the computer voice, then a pop, a ta-da and a chime. Notice how loud they are, and that they come
+    from the main speakers (not the earpiece at the top of an iPhone).</p>
   <p>${btn('sounds-before', 'Play test sounds', { sel: beforePlayed })}</p>
   <h2>Step 2. Record</h2>
   <p>Tap Record and say “${SAY}”. It stops by itself after ${RECORD_MS / 1000} seconds, then plays your recording back.</p>
@@ -167,6 +189,25 @@ function extrasView(): string {
   ${back()}`;
 }
 
+function moveView(): string {
+  const t = lastTake();
+  const m = saved.moved;
+  return `<h1>8. Play an iPhone recording on the iPad</h1>
+  <h2>On the iPhone</h2>
+  <p>${t ? `The last recording: ${esc(t.mime)}, made on ${esc(t.device)}.` : 'Do one of tests A to D first, so there is a recording to send.'}</p>
+  <p>Tap <b>Send the recording</b>, choose <b>AirDrop</b> and the iPad (or <b>Save to Files</b> in iCloud Drive).</p>
+  <p>${btn('send', 'Send the recording', { off: !t })}</p>
+  ${saved.sent ? `<p class="measured">Sent: ${esc(saved.sent)}</p>` : ''}
+  <h2>On the iPad</h2>
+  <p>Open Mic test from its icon, come to this step, tap <b>Load a recording</b> and pick “Mic test recording”
+    (AirDrop puts it in the Files app, in Downloads). Then tap <b>Play it</b>.</p>
+  <p>${btn('load-rec', 'Load a recording')}${btn('play-moved', 'Play it', { off: !movedBuffer, big: true })}</p>
+  ${m ? `<p class="measured">From ${esc(m.from)} · ${esc(m.mime)} · ${m.seconds.toFixed(1)} s · decodes: ${esc(m.decodes)}</p>
+  <p>How did it sound?<br>${btn('heard', 'Clear', { val: 'clear', sel: m.heard === 'clear', off: !movedBuffer })}${btn('heard', 'Too quiet', { val: 'quiet', sel: m.heard === 'quiet', off: !movedBuffer })}${btn('heard', 'Nothing', { val: 'none', sel: m.heard === 'none', off: !movedBuffer })}</p>` : ''}
+  <input type="file" id="recIn" hidden>
+  ${back()}`;
+}
+
 /* ---- results: one screen, large text, so a screenshot records everything ---- */
 function line(ok: boolean | null, text: string): string {
   const mark = ok === null ? '<span class="mark none">–</span>' : ok ? '<span class="mark ok">OK</span>' : '<span class="mark check">Check</span>';
@@ -177,9 +218,8 @@ function resultsView(): string {
   const runs = (['A', 'B', 'C', 'D'] as Variant[]).map((v) => [v, saved.runs[v]] as const);
   const first = runs.map(([, r]) => r).find((r) => r && !r.error && r.mimeType);
   const out: string[] = [];
-  const browser = versionFromBrowser();
-  out.push(line(saved.version ? /^18/.test(saved.version) : null,
-    `iPadOS ${esc(saved.version ?? '?')}${browser ? ' (browser: ' + esc(browser) + ')' : ''} · home-screen app: ${isStandalone() ? 'yes' : 'NO'}`));
+  out.push(line(saved.version ? saved.version === 'right' && isStandalone() : null,
+    `${esc(THIS_DEVICE)} · matches Settings: ${saved.version === 'right' ? 'yes' : saved.version === 'different' ? 'NO' : '?'} · home-screen app: ${isStandalone() ? 'yes' : 'NO'}`));
   out.push(line(first ? /mp4|aac/i.test(first.mimeType) && first.decodes === 'yes' : null, (first
     ? `Format ${esc(first.mimeType)} · ${first.seconds.toFixed(1)} s · ${first.sizeKB} KB · plays back ${esc(first.decodes)}`
     : 'Format: not recorded yet') + ' · can record: ' + esc(supportedFormats().replace(/audio\//g, ''))));
@@ -202,6 +242,14 @@ function resultsView(): string {
   const x = saved.extras;
   out.push(line(x ? x.idb === 'ok' : null, x ? `Storage ${esc(x.idb)} · persist ${esc(x.persist)} · ${esc(x.free)} free` : 'Storage: not checked'));
   out.push(line(x?.load ? x.share === 'yes' && x.load === 'yes' : null, `Share a .zip: ${esc(x?.share ?? '?')} · load it back: ${esc(x?.load ?? '?')}`));
+  if (saved.sent) out.push(line(saved.sent === 'yes', `Send a recording to the iPad: ${esc(saved.sent)}`));
+  const m = saved.moved;
+  if (m) {
+    out.push(line(m.heard ? m.decodes === 'yes' && m.heard === 'clear' && m.standalone : null,
+      `Recording from ${esc(m.from)} (${esc(m.mime)}, ${m.seconds.toFixed(1)} s) played here: decodes ${esc(m.decodes)} · ` +
+      `heard ${m.heard === 'clear' ? 'clearly' : m.heard === 'quiet' ? 'TOO QUIET' : m.heard === 'none' ? 'NOTHING' : '?'}` +
+      (m.standalone ? '' : ' · IN SAFARI')));
+  }
   const mic = runs.map(([v, r]) => (r && !r.error ? `${v}: ${esc(r.trackSettings)}` : '')).filter(Boolean);
   return `<div id="results">${out.join('')}</div>
   <p class="ua">Mic: ${mic.join(' · ') || '?'} · audio session now: ${esc(audioSessionType())}<br>${esc(navigator.userAgent)}</p>${back()}`;
@@ -210,10 +258,12 @@ function resultsView(): string {
 function render(): void {
   const main = $('main');
   main.innerHTML = view === 'version' ? versionView() : view === 'run' ? runView() : view === 'prompt' ? promptView()
-    : view === 'extras' ? extrasView() : view === 'results' ? resultsView() : homeView();
+    : view === 'extras' ? extrasView() : view === 'move' ? moveView() : view === 'results' ? resultsView() : homeView();
   document.documentElement.classList.toggle('results', view === 'results');
   const fileIn = document.getElementById('fileIn') as HTMLInputElement | null;
   if (fileIn) fileIn.addEventListener('change', () => { void loadFile(fileIn); });
+  const recIn = document.getElementById('recIn') as HTMLInputElement | null;
+  if (recIn) recIn.addEventListener('change', () => { void loadRecording(recIn); });
 }
 
 /* ---- sounds ---- */
@@ -232,17 +282,26 @@ function playBuffer(b: AudioBuffer): void {
   s.connect(master);
   s.start(0);
 }
-/* The game's pop and ta-da, a decoded clip (the way recordings play), then the computer voice. */
+/* iPhones and iPads only let a page start speaking during a tap. Each test starts from a freshly opened app, so the
+   voice must start inside the tap (the game does the same with its first line, inside the Play tap). An empty line
+   spoken straight away unlocks it, because say() itself waits a moment before speaking. */
+function unlockSpeech(): void {
+  try { if ('speechSynthesis' in window) speechSynthesis.speak(new SpeechSynthesisUtterance('')); } catch { /* no voice */ }
+}
+/* Called inside the tap: the computer voice, then the game's pop and ta-da, then a decoded clip (the way recordings
+   play). The voice goes first so that it starts inside the tap. */
 function playTestSounds(): void {
   stopSpeech();
   ensureAudio();
-  playPop();
-  setTimeout(playFanfare, 600);
-  setTimeout(() => {
-    if (chime) { playBuffer(chime); return; }
-    decode(chimeWav()).then((b) => { chime = b; playBuffer(b); }, () => { /* reported by the recording step */ });
-  }, 1600);
-  setTimeout(() => { say('prompt:B'); }, 2500);
+  unlockSpeech();
+  say('prompt:B', () => {
+    playPop();
+    setTimeout(playFanfare, 600);
+    setTimeout(() => {
+      if (chime) { playBuffer(chime); return; }
+      decode(chimeWav()).then((b) => { chime = b; playBuffer(b); }, () => { /* reported by the recording step */ });
+    }, 1600);
+  });
 }
 
 async function record(): Promise<void> {
@@ -274,6 +333,10 @@ async function record(): Promise<void> {
       run.seconds = b.duration;
       run.decodes = 'yes';
       playBuffer(b);
+      try {
+        const keep: LastTake = { mime: blob.type || take.mimeType, b64: toBase64(new Uint8Array(await blob.arrayBuffer())), device: THIS_DEVICE, when: run.when };
+        localStorage.setItem(TAKE_KEY, JSON.stringify(keep));
+      } catch { /* step 8 then says there is no recording */ }
     } catch (e) { run.decodes = 'no (' + String(e) + ')'; }
   }
   saved.runs[variant] = run;
@@ -292,7 +355,7 @@ async function storage(): Promise<void> {
 
 async function share(): Promise<void> {
   const token = Math.random().toString(36).slice(2, 10);
-  const zip = makeZip('mic-test.txt', 'Bubble Pop mic test ' + token);
+  const zip = makeZip([{ name: 'mic-test.txt', data: new TextEncoder().encode('Bubble Pop mic test ' + token) }]);
   const file = new File([zip], 'Mic test file.zip', { type: 'application/zip' });
   const x = saved.extras ?? { idb: '?', persist: '?', persisted: '?', free: '?' };
   try {
@@ -311,8 +374,60 @@ async function loadFile(input: HTMLInputElement): Promise<void> {
   if (!f || !saved.extras) return;
   try {
     const z = readZip(new Uint8Array(await f.arrayBuffer()));
-    saved.extras.load = !z ? 'not readable' : z.text.endsWith(saved.extras.token ?? '-') ? 'yes' : 'a different file';
+    const text = z?.[0] ? new TextDecoder().decode(z[0].data) : '';
+    saved.extras.load = !z ? 'not readable' : text.endsWith(saved.extras.token ?? '-') ? 'yes' : 'a different file';
   } catch (e) { saved.extras.load = String(e); }
+  save();
+  render();
+}
+
+/* Step 8, on the recording device: the last recording and a note of where it was made, in a .zip like the game's
+   backup file will be. */
+async function sendRecording(): Promise<void> {
+  const t = lastTake();
+  if (!t) return;
+  const about = JSON.stringify({ device: t.device, mime: t.mime, when: t.when });
+  const zip = makeZip([
+    { name: 'recording.' + extensionFor(t.mime), data: fromBase64(t.b64) },
+    { name: 'about.json', data: new TextEncoder().encode(about) }
+  ]);
+  const file = new File([zip], 'Mic test recording.zip', { type: 'application/zip' });
+  try {
+    if (!navigator.canShare || !navigator.canShare({ files: [file] })) saved.sent = 'not supported';
+    else { await navigator.share({ files: [file], title: 'Mic test recording' }); saved.sent = 'yes'; }
+  } catch (e) {
+    saved.sent = e instanceof Error && e.name === 'AbortError' ? 'cancelled' : String(e);
+  }
+  save();
+  render();
+}
+
+/* Step 8, on the playing device: read the .zip and decode the recording. It plays on the next tap ("Play it"),
+   because sound may only start inside a tap. */
+async function loadRecording(input: HTMLInputElement): Promise<void> {
+  const f = input.files?.[0];
+  if (!f) return;
+  const moved: Moved = { from: '?', mime: '?', seconds: 0, decodes: 'no', standalone: isStandalone() };
+  movedBuffer = null;
+  try {
+    const z = readZip(new Uint8Array(await f.arrayBuffer()));
+    const rec = z?.find((e) => e.name.startsWith('recording.'));
+    const about = z?.find((e) => e.name === 'about.json');
+    if (!z || !rec) moved.decodes = 'no (not a Mic test recording)';
+    else {
+      if (about) {
+        const a = JSON.parse(new TextDecoder().decode(about.data)) as { device?: string; mime?: string };
+        moved.from = String(a.device ?? '?');
+        moved.mime = String(a.mime ?? '?');
+      }
+      ensureAudio();
+      const b = await decode(rec.data.buffer as ArrayBuffer);
+      movedBuffer = b;
+      moved.seconds = b.duration;
+      moved.decodes = 'yes';
+    }
+  } catch (e) { moved.decodes = 'no (' + String(e) + ')'; }
+  saved.moved = moved;
   save();
   render();
 }
@@ -329,8 +444,13 @@ document.addEventListener('click', (e) => {
     case 'go-run': variant = val as Variant; view = 'run'; notFresh = saved.lastRunSession === SESSION; beforePlayed = false; afterPlayed = false; break;
     case 'go-prompt': view = 'prompt'; break;
     case 'go-extras': view = 'extras'; break;
+    case 'go-move': view = 'move'; break;
+    case 'send': void sendRecording(); return;
+    case 'load-rec': ($('recIn') as HTMLInputElement).click(); return;
+    case 'play-moved': stopSpeech(); ensureAudio(); if (movedBuffer) playBuffer(movedBuffer); return;
+    case 'heard': if (saved.moved) { saved.moved.heard = val as 'clear' | 'quiet' | 'none'; save(); } break;
     case 'go-results': view = 'results'; break;
-    case 'version': saved.version = val; save(); break;
+    case 'version': saved.version = val as 'right' | 'different'; save(); break;
     case 'sounds-before': playTestSounds(); beforePlayed = true; break;
     case 'record': void record(); return;
     case 'stop': if (stopRecording) stopRecording(); return;

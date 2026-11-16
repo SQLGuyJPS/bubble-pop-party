@@ -214,20 +214,27 @@ in `tests/limits.mjs`.
 ## Microphone test
 
 Before the game gets its own Recordings screen (Milestone 6), the page
-<https://sqlguyjps.github.io/bubble-pop-party/mictest/> checks that the iPad can record from a home-screen icon
-without the game's sounds getting quieter afterwards. It is not linked from the game and not saved for offline use,
-and it will be deleted when Milestone 6 is finished.
+<https://sqlguyjps.github.io/bubble-pop-party/mictest/> checks that the iPhone you record on can record from a
+home-screen icon without its sounds getting quieter afterwards, and that a recording made on the iPhone plays on the
+iPad. It is not linked from the game and not saved for offline use, and it will be deleted when Milestone 6 is
+finished.
 
-1. Open the page in Safari on the iPad.
+1. Open the page in Safari on the iPhone.
 2. Tap the Share button, then **Add to Home Screen**, then **Add**. A new icon called **Mic test** appears (a pink
    bubble with an **M**). It is separate from the game.
 3. Close Safari and open **Mic test** from its icon.
-4. Do the steps on the page in order. Before each of tests A to D, close Mic test fully (swipe up from the bottom and
-   push it away) and open it again. The page remembers your answers.
-5. Tap **Results** and take a screenshot. Send the screenshot.
-6. When you are done, you can delete the Mic test icon (press and hold it, then **Remove App**).
+4. Turn off silent mode and take off any headphones.
+5. Do steps 1 to 7 on the page in order. Before each of tests A to D, close Mic test fully (swipe up from the bottom
+   and push it away) and open it again. The page remembers your answers.
+6. On the iPad, add Mic test to the home screen the same way (steps 1 to 3), and open it from its icon.
+7. Do step 8 on the page: tap **Send the recording** on the iPhone and AirDrop it to the iPad. On the iPad, tap
+   **Load a recording**, pick **Mic test recording** (in the Files app, under Downloads), then tap **Play it**.
+8. On the iPad, also do steps 1 and 7.
+9. Tap **Results** on each device and take a screenshot. Send both screenshots.
+10. When you are done, you can delete the Mic test icons (press and hold one, then **Remove App**).
 
-The page records only for the test. Nothing it records is saved or sent anywhere.
+The page records only for the test. The last recording stays inside the Mic test app until you send it yourself in
+step 8. Nothing is sent anywhere by the page.
 
 ## How the offline copy works
 
