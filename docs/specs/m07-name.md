@@ -1,7 +1,7 @@
 # Milestone 7: Spell my name
 
-Status: **draft, for agreement**. The open questions are in section 15, each with a recommendation. Where a section
-depends on one, it says "(Q n)". Nothing is built until the answers are in.
+Status: **agreed** (2026-11-17). The answers to the questions are in section 15; where a section depends on one,
+it says "(Q n)".
 
 **Starts after Milestone 6 is merged.** It adds entries to the clip list (`src/clips.ts`) and uses the Recordings
 screen, both from Milestone 6. Nothing here changes how recordings are stored, played or backed up.
@@ -344,7 +344,7 @@ only additions, and is reviewed.
 
 Each step is its own commit, and all checks pass from step 2 on.
 
-1. This spec, agreed.
+1. This spec, agreed (2026-11-17).
 2. Settings: `childName`, `nameSay`, `mode: 'name'`, their checks.
 3. Clip list entries and the build's `audio/name.*` refusal, with their checks.
 4. `name.ts` and targets: order, forms, the next letter kept ready, look-alikes, double letters, the wait for the
@@ -368,9 +368,11 @@ Each step is its own commit, and all checks pass from step 2 on.
 - [ ] `git status` and the published site have no trace of the name.
 - [ ] README, AUDIO-GUIDE, CLAUDE.md and ROADMAP are updated.
 
-## 15. Questions to agree
+## 15. Decisions (answers to the questions)
 
-| # | Question | Recommendation | Other choices |
+Agreed 2026-11-17. All as recommended.
+
+| # | Question | Decision | Not chosen |
 | --- | --- | --- | --- |
 | Q1 | What a correct pop says in My name | Just the letter name ("Ay!"), then the next question. Keeps the round quick and on the name's letters. Needs the `letter:` clips anyway, for the spelling | The usual cheer ("Great! eigh is for apple."): longer, and the picture word pulls away from the name |
 | Q2 | What a name can contain | A to Z only, 1 to 10 letters | Allow a space or hyphen, shown as a gap tile ("Mary-Kate"); allow up to 12 |
