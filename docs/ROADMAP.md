@@ -164,6 +164,8 @@ file list.
 
 ## Milestone 7: Spell my name
 
+**Full spec:** [`docs/specs/m07-name.md`](specs/m07-name.md) (draft, for agreement).
+
 **Setup:** the parent types the name and, if the computer voice says it wrong, a pronunciation spelling. Better
 still, record the name on the Recordings screen.
 
