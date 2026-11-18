@@ -87,7 +87,8 @@ export function makeZip(entries: ZipEntry[]): Uint8Array<ArrayBuffer> {
     u32(it.crc); u32(it.data.length); u32(it.data.length); u16(it.name.length); u16(0); u16(0); u16(0); u16(0); u32(0);
     u32(it.at); bytes(it.name);
   }
-  u32(0x06054b50); u16(0); u16(0); u16(items.length); u16(items.length); u32(o - centralAt); u32(centralAt); u16(0);
+  const centralSize = o - centralAt;
+  u32(0x06054b50); u16(0); u16(0); u16(items.length); u16(items.length); u32(centralSize); u32(centralAt); u16(0);
   return out;
 }
 
