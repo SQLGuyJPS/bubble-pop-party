@@ -399,10 +399,8 @@ only the audio session step (C) avoided it. The computer voice was never affecte
 **Decided from these results** (section 7): `audio/mp4` and `.m4a`; recording as test C; no level meter and no
 stopping on silence; the README warns that the microphone prompt comes back each time the app is opened.
 
-**Still open:**
+**Was open, now settled:**
 
-- **The iPad side of step 8** (load the iPhone's recording in Mic test on the iPad and play it) and steps 1 and 7 on
-  the iPad: waiting for the iPad's Results screenshot. The "too quiet" line above was played on the iPhone.
 - **Too quiet (measured, settled):** the take sent from the iPhone (`Mic test recording.zip`, 18 Nov 11:45, AAC,
   48000 Hz, **2 channels**, 2.7 s) was measured with the section 7 rules. Background noise −70 dBFS; speech found from
   0.42 to 1.96 s (the whole sentence, nothing cut off at the start); speech loudness **−34.8 dBFS**; loudest peak
@@ -419,6 +417,23 @@ stopping on silence; the README warns that the microphone prompt comes back each
   the countdown reached 0 early and the parent tapped Stop then, cutting the take short. Nothing was lost by the
   iPhone. The game therefore counts the length limit only from when recording has
   started (section 2c), and the panel waits for the answer first.
+
+### Results (2026-11-18, iPad)
+
+From the Results screen of Mic test on the **iPad, iPadOS 18.7.9** (Safari 18.7.9, which describes itself as a Mac),
+opened from its home-screen icon, device and version confirmed against Settings. Tests A to D and step 6 are for the
+iPhone only and weren't run here.
+
+| Finding | Result | Mark |
+| --- | --- | --- |
+| Can record | mp4, mp4 AAC, webm Opus | – |
+| Storage | IndexedDB ok, persist true, 41.2 GB free | OK |
+| Share a .zip and load it back | yes, yes | OK |
+| The iPhone's recording (AAC, 2.7 s, sent by AirDrop) played in Mic test on the iPad | decodes, heard **clearly** | OK |
+
+So the whole path works: an AAC recording from iOS 27.2 on the iPhone, moved in a .zip, decodes and plays on
+iPadOS 18.7.9 through the game's sound code. It was heard clearly even before levelling (the iPad's speakers are
+louder than the iPhone's); levelling still evens out all clips against each other and against the pops.
 
 ## 11. Layout
 
@@ -519,7 +534,7 @@ Each step is its own commit, and all checks pass from step 3 on.
 - [ ] `npm test` ends with `0 problems found`, on your computer and in GitHub Actions.
 - [ ] The spoken-lines sample is unchanged.
 - [ ] No file in `src/` is over about 400 lines.
-- [ ] The microphone test results are in this spec (iPhone: done, recording measured; iPad: waiting), and the game uses what they showed.
+- [x] The microphone test results are in this spec (iPhone and iPad: done), and the game uses what they showed.
 - [ ] On the iPhone, **from the home-screen icon**: record a few clips, including the first take after opening the
       app (the microphone question doesn't shorten it); the pops and the computer voice are **as loud as before and
       from the speakers**, also after several takes; the mic dot goes away after each take.
