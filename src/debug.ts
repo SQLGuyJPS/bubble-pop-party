@@ -16,6 +16,7 @@ import {
 import { AUDIO_OVERRIDES, own, sourceFor } from './recordings';
 import { sanitizeSettings } from './settings';
 import { ensureAudio, setMuted } from './sound';
+import { cancelTake, mic, releaseMic, startTake, stopTake, type TakeResult } from './mic';
 import { say, sayLog } from './speech';
 import { state } from './state';
 import { readAll, storeStatus, writeClips, type ClipRecord } from './store';
@@ -119,6 +120,15 @@ export function installDebug(): void {
       write: (recs: ClipRecord[], remove?: string[]) => writeClips(recs, remove)
     },
     setMuted,
+    mic: {
+      phase: () => mic.phase,
+      start: (): { result: TakeResult | null; recordingCalls: number } => {
+        const t = { result: null as TakeResult | null, recordingCalls: 0 };
+        void startTake(() => { t.recordingCalls++; }).then((r) => { t.result = r; });
+        return t;
+      },
+      stop: stopTake, cancel: cancelTake, release: releaseMic
+    },
     unlockAudio: () => { ensureAudio(); },   // what the first tap does
     quiet: () => { state.lastActivity = state.simTime; state.nextPromptAt = state.simTime + PROMPT_REPEAT_SECONDS; },
     pause: pauseGame,

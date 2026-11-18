@@ -6,7 +6,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { clips as list } from '../tools/clips.mjs';
 import { findRecordings } from '../tools/recordings.mjs';
-import { root, report, stats, expect, freshGame, runFor, targetBubble, tapBubble, newIDB, flush, passGate, UNDECODABLE, takeSignal, loadModule } from './harness.mjs';
+import { root, report, stats, expect, freshGame, runFor, targetBubble, tapBubble, newIDB, flush, passGate, UNDECODABLE, takeSignal, loadModule, tick } from './harness.mjs';
 
 // A saved recording as the game stores it. The audio is made-up bytes; the fake decoder turns it into a signal.
 export function record(clip, extra = {}) {
@@ -265,5 +265,81 @@ export default async function () {
     expect(out[0] === 0 && Math.abs(out[out.length - 1]) < 1e-6 && out[Math.round(rate * 0.4)] === 0.5, 'render() should fade in and out, and keep the middle');
     expect(L.render(new Float32Array(rate), rate, 0.1, 3, 1) === null, 'trim points past the end of the take should count as damaged');
     report('trimming and levelling', before);
+  }
+
+  // ---------- the microphone (src/mic.ts) ----------
+  {
+    const before = stats.failures;
+    const micGame = (mic = {}) => freshGame({}, { mic, webaudio: true, idb: newIDB() });
+    const released = (env, what) => {
+      expect(env.mic.live() === 0, `${what}: ${env.mic.live()} microphone track(s) still live`);
+      expect(env.mic.recording() === 0, `${what}: the recorder is still running`);
+      expect(env.bpp.mic.phase() === 'idle', `${what}: the microphone is still ${env.bpp.mic.phase()}`);
+      if (env.mic.session) expect(env.mic.session.type === 'playback', `${what}: the audio session was left as "${env.mic.session.type}"`);
+    };
+    // the parent answers the microphone question late: nothing is timed while it asks, and the take still gets 6 s
+    let env = micGame({ answerAfterMs: 8000 });
+    let t = env.bpp.mic.start();
+    expect(env.mic.sessionAtAsk[0] === 'play-and-record', 'the audio session should be "play-and-record" when the microphone is asked for');
+    const c = env.mic.constraints[0]?.audio ?? {};
+    expect(c.echoCancellation === false && c.noiseSuppression === false && c.autoGainControl === false, 'voice processing should be off: ' + JSON.stringify(c));
+    await tick(env, 7900);
+    expect(env.bpp.mic.phase() === 'asking' && t.recordingCalls === 0, 'the panel should still be waiting for the microphone question');
+    await tick(env, 200);
+    expect(env.bpp.mic.phase() === 'recording' && t.recordingCalls === 1, 'recording did not start once the question was answered');
+    expect(env.mic.recorders[0]?.mimeType === 'audio/mp4', 'the recording should be audio/mp4, got ' + env.mic.recorders[0]?.mimeType);
+    await tick(env, 5800);              // recording started at 8.0 s, when the question was answered
+    expect(env.bpp.mic.phase() === 'recording', 'the take stopped before 6 seconds of recording (the time spent asking was counted)');
+    await tick(env, 300);
+    expect(Math.abs((env.mic.recorders[0]?.ms ?? 0) - 6000) <= 20, 'the length limit should stop the take after 6 s of recording, got ' + env.mic.recorders[0]?.ms);
+    expect(t.result?.kind === 'take' && t.result.type === 'audio/mp4' && t.result.data.byteLength > 0, 'the take was not handed over: ' + JSON.stringify(t.result?.kind));
+    released(env, 'after the length limit');
+
+    // the question left open for 60 seconds: gives up and lets go; a late "Allow" is let go straight away
+    env = micGame({ answerAfterMs: 65000 });
+    t = env.bpp.mic.start();
+    await tick(env, 59900, 100);
+    expect(env.bpp.mic.phase() === 'asking', 'gave up on the microphone question before 60 seconds');
+    await tick(env, 200);
+    expect(t.result?.kind === 'timeout', 'a question left open for 60 seconds should give up, got ' + t.result?.kind);
+    released(env, 'after 60 seconds unanswered');
+    await tick(env, 6000);
+    expect(env.mic.tracks.length === 2 && env.mic.live() === 0 && env.mic.recorders.length === 0, 'a late "Allow" left the microphone on');
+
+    // Stop early keeps the take so far
+    env = micGame();
+    t = env.bpp.mic.start();
+    await tick(env, 300 + 2500);
+    env.bpp.mic.stop();
+    await tick(env, 100);
+    expect(t.result?.kind === 'take' && env.mic.recorders[0].ms === 2500, 'Stop should keep a 2.5 s take, got ' + t.result?.kind + ' ' + env.mic.recorders[0]?.ms);
+    released(env, 'after Stop');
+    // a second take in the same opening of the app works too, with no new question needed
+    t = env.bpp.mic.start();
+    await tick(env, 400); env.bpp.mic.stop(); await tick(env, 100);
+    expect(t.result?.kind === 'take', 'a second take did not work');
+    released(env, 'after a second take');
+
+    // refused, an error, a recorder that won't start, cancelling while asking and while recording, Record twice
+    for (const [what, mic, act, want] of [
+      ['refused', { answer: 'refuse' }, null, 'refused'],
+      ['an error', { answer: 'error' }, null, 'error'],
+      ['the recorder failing', { failStart: true }, null, 'error'],
+      ['cancel while asking', { answerAfterMs: 5000 }, async (e) => { await tick(e, 1000); e.bpp.mic.cancel(); }, 'cancelled'],
+      ['cancel while recording', {}, async (e) => { await tick(e, 2000); e.bpp.mic.cancel(); }, 'cancelled'],
+      ['no audio session', { session: false }, async (e) => { await tick(e, 1000); e.bpp.mic.stop(); }, 'take'],
+      ['no audio/mp4', { types: [] }, async (e) => { await tick(e, 1000); e.bpp.mic.stop(); }, 'take']
+    ]) {
+      env = micGame(mic);
+      t = env.bpp.mic.start();
+      const second = env.bpp.mic.start();
+      if (act) await act(env);
+      await tick(env, 6500);
+      expect(t.result?.kind === want, `${what}: expected "${want}", got "${t.result?.kind}"`);
+      expect(second.result?.kind === 'busy' && env.mic.asks === 1, `${what}: Record twice asked for the microphone twice`);
+      released(env, what);
+      if (what === 'no audio session') expect(!env.mic.session && env.mic.asks === 1, 'no audio session: should still record');
+    }
+    report('microphone: the limit counts from the start of recording, and the mic is always let go', before);
   }
 }

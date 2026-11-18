@@ -45,6 +45,11 @@ export function mulberry(seed) {
 // fails), 'hang' (opening never answers), 'full' (every write is refused as over quota).
 export function newIDB(mode = 'ok') { return { mode, version: 0, stores: new Map(), keyPaths: {}, writes: 0, failNextWrite: false }; }
 export const flush = async (n = 6) => { for (let i = 0; i < n; i++) await new Promise((r) => setImmediate(r)); };
+// Moves the fake clock in small steps, letting promises settle between them (the microphone and storage answer
+// through promises).
+export async function tick(env, ms, stepMs = 10) {
+  for (let t = 0; t < ms; t += stepMs) { env.advance(Math.min(stepMs, ms - t)); await flush(2); }
+}
 function fakeIndexedDB(db) {
   const later = (fn) => { Promise.resolve().then(fn); };
   const clone = (v) => (v === undefined ? undefined : structuredClone(v));
@@ -164,6 +169,46 @@ function fakeWebAudio(opts, webaudio, setT, clearT) {
   };
 }
 
+// ---------- fake microphone (only with makeEnv({ mic: {...} })) ----------
+// mic.answer: 'allow' (default), 'refuse', 'error' or 'never'; mic.answerAfterMs: how long the parent takes to answer
+// the microphone question; mic.session: false for no navigator.audioSession; mic.types: what MediaRecorder supports.
+function fakeMicrophone(o, setT, now) {
+  const m = { asks: 0, constraints: [], tracks: [], recorders: [], sessionAtAsk: [], answer: 'allow', answerAfterMs: 300, types: ['audio/mp4'], ...o };
+  m.session = o.session === false ? null : { type: 'auto' };
+  m.live = () => m.tracks.filter((t) => t.readyState === 'live').length;
+  m.recording = () => m.recorders.filter((r) => r.state !== 'inactive').length;
+  const mediaDevices = {
+    getUserMedia(c) {
+      m.asks++;
+      m.constraints.push(c);
+      m.sessionAtAsk.push(m.session ? m.session.type : 'none');
+      return new Promise((ok, bad) => {
+        if (m.answer === 'never') return;
+        setT(() => {
+          if (m.answer === 'refuse') { const e = new Error('denied'); e.name = 'NotAllowedError'; bad(e); return; }
+          if (m.answer === 'error') { const e = new Error('busy'); e.name = 'NotReadableError'; bad(e); return; }
+          const tracks = [0, 1].map(() => ({ kind: 'audio', readyState: 'live', stop() { this.readyState = 'ended'; } }));
+          m.tracks.push(...tracks);
+          ok({ getTracks: () => tracks, getAudioTracks: () => tracks });
+        }, m.answerAfterMs);
+      });
+    }
+  };
+  class MediaRecorder {
+    static isTypeSupported(t) { return m.types.includes(t); }
+    constructor(stream, opts) { this.stream = stream; this.mimeType = (opts && opts.mimeType) || 'audio/webm'; this.state = 'inactive'; m.recorders.push(this); }
+    start() { if (m.failStart) throw new Error('cannot start'); this.state = 'recording'; this.startedAt = now(); }
+    stop() {
+      if (this.state === 'inactive') { const e = new Error('inactive'); e.name = 'InvalidStateError'; throw e; }
+      this.state = 'inactive';
+      this.ms = now() - this.startedAt;
+      const bytes = new Uint8Array(Math.max(1, Math.round(this.ms))).fill(m.silent ? 1 : 7);
+      setT(() => { if (this.ondataavailable) this.ondataavailable({ data: new Blob([bytes], { type: this.mimeType }) }); if (this.onstop) this.onstop(); }, 20);
+    }
+  }
+  return { m, mediaDevices, MediaRecorder };
+}
+
 // ---------- fake browser ----------
 export function makeEnv(opts) {
   const timers = [];
@@ -264,6 +309,16 @@ export function makeEnv(opts) {
       setItem: (k, v) => { opts.storage.set(k, String(v)); }
     };
   }
+  let mic = null;
+  context.navigator = {};
+  if (opts.mic) {
+    const f = fakeMicrophone(opts.mic, fakeSetTimeout, () => clock);
+    mic = f.m;
+    context.navigator.mediaDevices = f.mediaDevices;
+    if (f.m.session) context.navigator.audioSession = f.m.session;
+    context.MediaRecorder = f.MediaRecorder;
+    context.Blob = Blob;
+  }
   const webaudio = { contexts: 0, played: [], playing: 0, maxPlaying: 0, decodes: 0 };
   if (opts.webaudio) context.AudioContext = fakeWebAudio(opts, webaudio, fakeSetTimeout, fakeClearTimeout);
   if (opts.idb && opts.idb.mode !== 'missing') context.indexedDB = fakeIndexedDB(opts.idb);
@@ -273,7 +328,7 @@ export function makeEnv(opts) {
   vm.createContext(context);
   vm.runInContext('Math.random = __rand;', Object.assign(context, { __rand: opts.rand }));
   vm.runInContext(code, context);
-  return { bpp: context.__bpp, advance, speech, audio, webaudio, elements, context };
+  return { bpp: context.__bpp, advance, speech, audio, webaudio, mic, elements, context };
 }
 
 // ---------- helpers for the feature checks ----------
