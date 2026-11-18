@@ -1,35 +1,20 @@
 /* Speech: everything the game says goes through say(clip). A clip is your recording if there is one, otherwise
    the computer voice. Only one spoken line at a time: say() always stops whatever was playing first. */
 import { CHEER_PAUSE_MS } from './config';
-import { info, isItem, isNumber } from './items';
+import { clipByName } from './clips';
 import { AUDIO_OVERRIDES } from './recordings';
 import { audioCtx, clipBuffers, master } from './sound';
 import { state, type Key } from './state';
 
-function nameOf(key: Key): string { return info(key).say; }
-function kindOf(key: Key): string { return isNumber(key) ? 'number' : 'letter'; }
-function anchorText(key: Key): string {
-  return isNumber(key) ? info(key).word : nameOf(key) + ' is for ' + info(key).word;
-}
+/* "Hear it" in Settings plays the tricky letter A's cheer. It isn't a clip and can't be recorded. */
+const VOICETEST = 'cheer:A';
 
 /* The words for one clip, as the computer voice says them. */
-export function textFor(clip: string): string {
-  const [kind = '', key = ''] = String(clip).split(':');
-  if (kind === 'prompt' && isItem(key)) return 'Can you find the ' + kindOf(key) + ' ' + nameOf(key) + '?';
-  if (kind === 'cheer' && isItem(key)) return 'Great! ' + anchorText(key) + '.';
-  if (kind === 'that' && isItem(key)) return "That's the " + kindOf(key) + ' ' + nameOf(key) + '.';
-  if (kind === 'party') return 'Hooray! You popped ten bubbles! Great job!';
-  if (kind === 'bye') return 'All done! Great playing. Bye bye!';
-  if (kind === 'voicetest') return textFor('cheer:A');   // what the parent hears from "Hear it": the tricky letter A
-  return '';
-}
+export function textFor(clip: string): string { return speechPieces(clip).join(' '); }
 
 /* The computer voice says a cheer in two pieces with a short pause between (see CHEER_PAUSE_MS). */
 function speechPieces(clip: string): string[] {
-  const [kind = '', key = ''] = String(clip === 'voicetest' ? 'cheer:A' : clip).split(':');   // "Hear it" plays the tricky letter A
-  if (kind === 'cheer' && isItem(key)) return ['Great!', anchorText(key) + '.'];
-  const t = textFor(clip);
-  return t ? [t] : [];
+  return clipByName(clip === 'voicetest' ? VOICETEST : clip)?.speech ?? [];
 }
 
 /* One spoken moment can be several clips played one after another.

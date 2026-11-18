@@ -1,5 +1,6 @@
 /* Letters and numbers. "say" is a phonetic respelling so the computer voice reads the letter NAME ("bee")
    instead of a word or a sound. "pic" is the picture shown beside the big character. */
+import type { Settings } from './config';
 import { state, type Key, type Target } from './state';
 
 export interface Item { say: string; word: string; pic: string }
@@ -69,8 +70,8 @@ export function glyphFor(key: Key): string {
 }
 
 /* Everything the parent chose to practise, in a fixed order. Never empty. */
-export function pool(): Key[] {
-  const s = state.settings;
+export function pool(): Key[] { return poolFor(state.settings); }
+export function poolFor(s: Settings): Key[] {
   let keys: Key[] = [];
   if (s.mode !== 'numbers') keys = keys.concat(String(s.letters).toUpperCase().split(''));
   if (s.mode !== 'letters') keys = keys.concat(String(s.numbers).split(''));

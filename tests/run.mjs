@@ -9,8 +9,9 @@ import parent from './parent.mjs';
 import install from './install.mjs';
 import limits from './limits.mjs';
 import banner from './banner.mjs';
+import recordings from './recordings.mjs';
 
-for (const area of [gameplay, speech, parent, install, targets, banner, limits]) await area();
+for (const area of [gameplay, speech, parent, install, targets, banner, recordings, limits]) await area();
 
 console.log(`\n${stats.games} simulated games, ${stats.failures} problems found.`);
 process.exit(stats.failures ? 1 : 0);
