@@ -2,7 +2,7 @@
    the computer voice. Only one spoken line at a time: say() always stops whatever was playing first. */
 import { CHEER_PAUSE_MS } from './config';
 import { clipByName } from './clips';
-import { AUDIO_OVERRIDES } from './recordings';
+import { AUDIO_OVERRIDES, own } from './recordings';
 import { audioCtx, clipBuffers, master } from './sound';
 import { state } from './state';
 
@@ -85,7 +85,7 @@ export function stopSpeech(): void {
   }
 }
 
-/* Plays one clip: your recording if there is one, otherwise the computer voice.
+/* Plays one clip: a recording if there is one, otherwise the computer voice.
    Calls next() when it finishes (or fails), but only if nothing newer has started. */
 function playClip(clip: string, token: number, next: () => void): void {
   let called = false;
@@ -129,9 +129,10 @@ function playClip(clip: string, token: number, next: () => void): void {
     }
     speakTimer = setTimeout(() => { speakPiece(0); }, 50);   // tiny delay after cancel() so browsers don't swallow the new line
   }
+  /* 1. your recording made in the game, 2. a file in audio/, 3. the computer voice (see recordings.ts) */
   const file = AUDIO_OVERRIDES[clip];
-  const buffer = clipBuffers[clip];
-  if (file && buffer && audioCtx && master) {
+  const buffer = own.buffers[clip] ?? (file ? clipBuffers[clip] : undefined);
+  if (buffer && audioCtx && master) {
     /* Preferred path: the recording was decoded ahead of time and plays through the same Web Audio
        context as the pops. No download or decode at play time (no freeze), and the browser's audio
        output is never handed back and forth between an <audio> element and Web Audio. */

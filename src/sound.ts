@@ -1,9 +1,12 @@
 /* Sound effects (Web Audio, no files), the mute button and the volume. Recordings are decoded here too, so they
    play through the same audio context as the pops. */
+import { clipByName, clipsFor } from './clips';
 import { els } from './dom';
-import { AUDIO_OVERRIDES } from './recordings';
+import { mixToMono, render } from './level';
+import { AUDIO_OVERRIDES, own } from './recordings';
 import { say, stopSpeech } from './speech';
 import { state } from './state';
+import { readClip, type ClipRecord } from './store';
 
 export let audioCtx: AudioContext | null = null;
 export let master: GainNode | null = null;
@@ -29,6 +32,66 @@ function preloadClips(): void {
       }).catch(() => { loading.delete(clip); });
     } catch { /* keep <audio> fallback */ }
   }
+}
+
+/* Decodes the take with the game's audio context. */
+export function decodeAudio(data: ArrayBuffer): Promise<AudioBuffer> {
+  return new Promise((ok, bad) => {
+    if (!audioCtx) { bad(new Error('no audio')); return; }
+    try { audioCtx.decodeAudioData(data, ok, bad); } catch (e) { bad(e); }
+  });
+}
+
+/* A saved recording, decoded, trimmed and levelled, ready to play. Null if it can't be used here. */
+export async function prepareRecording(r: ClipRecord): Promise<AudioBuffer | null> {
+  if (!audioCtx) return null;
+  try {
+    const decoded = await decodeAudio(r.audio.slice(0));   // a copy: decoding can empty the one it is given
+    const chans: Float32Array[] = [];
+    for (let i = 0; i < decoded.numberOfChannels; i++) chans.push(decoded.getChannelData(i));
+    const out = render(mixToMono(chans), decoded.sampleRate, r.trimStart, r.trimEnd, r.gain);
+    if (!out) return null;
+    const buf = audioCtx.createBuffer(1, out.length, decoded.sampleRate);
+    buf.getChannelData(0).set(out);
+    return buf;
+  } catch { return null; }
+}
+
+/* Recordings made in the game: once sound is unlocked, the ones the current settings can play are read and decoded
+   (the trim and the volume change are applied once, here). Others are let go, to save memory. A clip that isn't
+   ready yet simply uses the next source for that one play. */
+const ownLoading = new Set<string>();
+const ownGeneration: Record<string, number> = {};
+export function decodeOwnClips(): void {
+  if (!audioUnlocked || !audioCtx) return;
+  const wanted = new Set(clipsFor(state.settings).map((c) => c.name));
+  for (const n of Object.keys(own.buffers)) if (!wanted.has(n)) delete own.buffers[n];
+  for (const n of wanted) {
+    if (!own.saved.has(n) || own.buffers[n] || own.problems[n] || ownLoading.has(n)) continue;
+    ownLoading.add(n);
+    const gen = ownGeneration[n] ?? 0;
+    const current = (): boolean => (ownGeneration[n] ?? 0) === gen;
+    void (async () => {
+      const r = await readClip(n);
+      if (!current()) return;
+      if (r === null) { own.saved.delete(n); return; }
+      if (r === 'damaged') { own.problems[n] = 'damaged'; return; }
+      if (r.words !== clipByName(n)?.script) { own.problems[n] = 'words'; return; }
+      const buf = await prepareRecording(r);
+      if (!current()) return;
+      if (buf) own.buffers[n] = buf; else own.problems[n] = 'damaged';
+    })().finally(() => { ownLoading.delete(n); });
+  }
+}
+
+/* A recording was saved, replaced or deleted on the Recordings screen: forget what was decoded before.
+   buffer is the new take, already prepared, or null after a delete. */
+export function ownChanged(name: string, buffer: AudioBuffer | null): void {
+  ownGeneration[name] = (ownGeneration[name] ?? 0) + 1;
+  ownLoading.delete(name);
+  delete own.problems[name];
+  if (buffer) { own.saved.add(name); own.buffers[name] = buffer; }
+  else { own.saved.delete(name); delete own.buffers[name]; }
 }
 
 export function applyVolume(): void {
@@ -71,6 +134,7 @@ export function ensureAudio(early?: boolean): void {
       s.connect(audioCtx.destination);
       s.start(0);
       audioUnlocked = true;
+      decodeOwnClips();
     }
     if (audioCtx.state !== 'running' && audioCtx.resume) void audioCtx.resume();
   } catch { /* sound effects are optional */ }

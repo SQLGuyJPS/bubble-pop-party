@@ -102,6 +102,61 @@ function fakeIndexedDB(db) {
   };
 }
 
+// ---------- fake Web Audio (only with makeEnv({ webaudio: true })) ----------
+// decodeAudioData turns bytes into a signal: by default a 2.4 s stereo take with quiet noise and speech (a tone) from
+// 0.4 to 1.6 s. Bytes starting with 0xEE don't decode. opts.decode(bytes) can return { rate, channels } instead.
+export const UNDECODABLE = 0xEE;
+export function takeSignal({ seconds = 2.4, rate = 48000, from = 0.4, to = 1.6, amp = 0.025, noise = 0.0003, channels = 2 } = {}) {
+  const n = Math.round(seconds * rate);
+  const mono = new Float32Array(n);
+  let seed = 9;
+  for (let i = 0; i < n; i++) {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    mono[i] = noise * ((seed / 0x7fffffff) * 2 - 1) + (i >= from * rate && i < to * rate ? amp * Math.sin(i * 2 * Math.PI * 220 / rate) : 0);
+  }
+  return { rate, channels: Array.from({ length: channels }, () => mono.slice()) };
+}
+function fakeWebAudio(opts, webaudio, setT, clearT) {
+  class AudioBuffer {
+    constructor(ch, len, rate) { this.numberOfChannels = ch; this.length = len; this.sampleRate = rate; this.duration = len / rate; this._d = Array.from({ length: ch }, () => new Float32Array(len)); this.from = 'create'; }
+    getChannelData(i) { return this._d[i]; }
+  }
+  const param = () => ({ value: 0, setValueAtTime() {}, exponentialRampToValueAtTime() {}, linearRampToValueAtTime() {} });
+  return class AudioContext {
+    constructor() { this.sampleRate = 48000; this.state = 'suspended'; this.currentTime = 0; this.destination = {}; webaudio.contexts++; }
+    resume() { this.state = 'running'; return Promise.resolve(); }
+    createGain() { return { gain: param(), connect() {}, disconnect() {} }; }
+    createBuffer(ch, len, rate) { return new AudioBuffer(ch, len, rate); }
+    createOscillator() { return { type: '', frequency: param(), connect() {}, start() {}, stop() {} }; }
+    createBiquadFilter() { return { type: '', frequency: param(), connect() {} }; }
+    createBufferSource() {
+      const src = {
+        buffer: null, onended: null, connect() {}, disconnect() {},
+        start() {
+          const b = src.buffer;
+          if (!b || b.duration < 0.2) return;          // the pop's noise and the silent unlock sound
+          webaudio.played.push(b);
+          webaudio.playing++;
+          webaudio.maxPlaying = Math.max(webaudio.maxPlaying, webaudio.playing);
+          src._t = setT(() => { src._t = 0; webaudio.playing--; if (src.onended) src.onended(); }, b.duration * 1000);
+        },
+        stop() { if (src._t) { clearT(src._t); src._t = 0; webaudio.playing--; if (src.onended) src.onended(); } }
+      };
+      return src;
+    }
+    decodeAudioData(data, ok, bad) {
+      webaudio.decodes++;
+      const bytes = new Uint8Array(data);
+      const sig = bytes.length && bytes[0] !== UNDECODABLE ? (opts.decode || (() => takeSignal()))(bytes) : null;
+      const buf = sig && new AudioBuffer(sig.channels.length, sig.channels[0].length, sig.rate);
+      if (buf) { buf.from = 'decode'; sig.channels.forEach((c, i) => buf._d[i].set(c)); }
+      const p = new Promise((res, rej) => { Promise.resolve().then(() => { if (buf) { if (ok) ok(buf); res(buf); } else { if (bad) bad(new Error('EncodingError')); rej(new Error('EncodingError')); } }); });
+      if (ok || bad) p.catch(() => {});
+      return p;
+    }
+  };
+}
+
 // ---------- fake browser ----------
 export function makeEnv(opts) {
   const timers = [];
@@ -202,6 +257,8 @@ export function makeEnv(opts) {
       setItem: (k, v) => { opts.storage.set(k, String(v)); }
     };
   }
+  const webaudio = { contexts: 0, played: [], playing: 0, maxPlaying: 0, decodes: 0 };
+  if (opts.webaudio) context.AudioContext = fakeWebAudio(opts, webaudio, fakeSetTimeout, fakeClearTimeout);
   if (opts.idb && opts.idb.mode !== 'missing') context.indexedDB = fakeIndexedDB(opts.idb);
   context.window = context;
   context.__BPP_TEST = true;
@@ -209,7 +266,7 @@ export function makeEnv(opts) {
   vm.createContext(context);
   vm.runInContext('Math.random = __rand;', Object.assign(context, { __rand: opts.rand }));
   vm.runInContext(code, context);
-  return { bpp: context.__bpp, advance, speech, audio, elements };
+  return { bpp: context.__bpp, advance, speech, audio, webaudio, elements, context };
 }
 
 // ---------- helpers for the feature checks ----------

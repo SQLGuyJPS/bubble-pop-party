@@ -3,7 +3,7 @@ import { GATE_HOLD_MS, GATE_IDLE_MS } from './config';
 import { els } from './dom';
 import { pauseGame, resetBubbles, resumeGame, startNewSession } from './game';
 import { sanitizeSettings, saveSettings } from './settings';
-import { applyVolume, ensureAudio, setMuted } from './sound';
+import { applyVolume, decodeOwnClips, ensureAudio, setMuted } from './sound';
 import { BAD_VOICES, getVoices, hasSpeech, say, stopSpeech } from './speech';
 import { state } from './state';
 
@@ -227,6 +227,7 @@ export function closeSettings(): void {
   els.settings.classList.add('hidden');
   saveSettings();
   stopSpeech();
+  decodeOwnClips();                                      // recordings for newly chosen letters and numbers
   state.uiLock = false;
   if (state.ended) { startNewSession(); return; }        // after the goodbye screen, a parent starts a new session
   if (state.running) {

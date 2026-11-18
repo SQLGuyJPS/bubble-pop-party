@@ -6,7 +6,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { clips as list } from '../tools/clips.mjs';
 import { findRecordings } from '../tools/recordings.mjs';
-import { root, report, stats, expect, freshGame, runFor, targetBubble, tapBubble, newIDB, flush } from './harness.mjs';
+import { root, report, stats, expect, freshGame, runFor, targetBubble, tapBubble, newIDB, flush, passGate, UNDECODABLE } from './harness.mjs';
 
 // A saved recording as the game stores it. The audio is made-up bytes; the fake decoder turns it into a signal.
 export function record(clip, extra = {}) {
@@ -139,5 +139,70 @@ export default async function () {
     const problems = playLong(env, 60);
     expect(problems.length === 0, 'damaged records broke the game: ' + problems.join('; '));
     report('storage: damaged records are ignored and reported', before);
+  }
+
+  // ---------- which clip plays: your recording, then a file in audio/, then the computer voice ----------
+  {
+    const before = stats.failures;
+    const bad = new Uint8Array(4000).fill(UNDECODABLE).buffer;
+    const idb = deviceWith({
+      'prompt:A': record('prompt:A'),                              // recorded, and also a file
+      'prompt:B': record('prompt:B'),                              // recorded only
+      'that:A': record('that:A', { gain: -3 }),                    // damaged, with a file
+      'that:B': record('that:B', { words: 'Find the letter B!' }),  // the words have changed since: not played
+      'party': record('party', { audio: bad }),                    // won't decode on this device, with a file
+      'bye': record('bye'),                                        // deleted before it was decoded
+      'prompt:C': record('prompt:C')                               // not in the current letters
+    });
+    const files = { 'prompt:A': 'audio/prompt-A.m4a', 'cheer:A': 'audio/cheer-A.m4a', 'that:A': 'audio/that-A.m4a', 'party': 'audio/party.m4a' };
+    const want = { 'prompt:A': 'own', 'prompt:B': 'own', 'cheer:A': 'file', 'cheer:B': 'voice', 'that:A': 'file', 'that:B': 'voice', 'party': 'file', 'bye': 'voice' };
+    const env = freshGame({ letters: 'AB' }, { idb, audio: 'ok', webaudio: true });
+    const { bpp } = env;
+    Object.assign(bpp.overrides, files);
+    await flush();
+    expect(bpp.rec.saved().length === 7, 'the saved list was not read at start-up');
+    expect(bpp.rec.ready().length === 0 && env.webaudio.decodes === 0, 'recordings were decoded before the first tap');
+    // needed before it has finished decoding: that one play uses the next source
+    bpp.unlockAudio();
+    idb.stores.get('clips').delete('bye');
+    bpp.say('prompt:A');
+    expect(env.audio.created.at(-1) === 'audio/prompt-A.m4a', 'a recording still decoding should fall back to the audio/ file for that play');
+    await flush(12);
+    expect(bpp.rec.ready().join() === 'prompt:A,prompt:B', 'decoded recordings should be prompt:A and prompt:B, got ' + bpp.rec.ready().join());
+    expect(JSON.stringify(bpp.rec.problems()) === JSON.stringify({ 'that:A': 'damaged', 'that:B': 'words', party: 'damaged' }),
+      'damaged, undecodable and changed-words recordings should be reported: ' + JSON.stringify(bpp.rec.problems()));
+    expect(!bpp.rec.saved().includes('bye'), 'a deleted recording is still listed');
+    for (const [clip, src] of Object.entries(want)) {
+      expect(bpp.rec.source(clip) === src, `${clip} should come from ${src}, but comes from ${bpp.rec.source(clip)}`);
+      env.advance(6000);
+      const counts = [env.webaudio.played.length, env.audio.created.length, env.speech.spoken];
+      bpp.say(clip);
+      env.advance(200);
+      const heard = env.webaudio.played.length > counts[0] ? 'own' : env.audio.created.length > counts[1] ? 'file' : env.speech.spoken > counts[2] ? 'voice' : 'nothing';
+      expect(heard === src, `${clip}: expected to hear ${src}, heard ${heard}`);
+      if (heard === 'own') {
+        const b = env.webaudio.played.at(-1);
+        const peak = b.getChannelData(0).reduce((m, x) => Math.max(m, Math.abs(x)), 0);
+        expect(b.from === 'create' && b.numberOfChannels === 1 && Math.abs(b.duration - 1.2) < 0.01 && Math.abs(peak - 0.05) < 0.005,
+          `${clip}: the recording should play trimmed to 1.2 s, in one channel, at twice the volume (got ${b.duration.toFixed(2)} s, peak ${peak.toFixed(3)})`);
+      }
+    }
+    env.advance(6000);
+    expect(env.webaudio.maxPlaying <= 1 && env.audio.maxPlaying <= 1 && env.speech.maxQueued <= 1, 'two spoken lines played at once');
+    // a wrong pop plays your "that" recording then the prompt, one after the other
+    bpp.say('wrong:B:A');
+    env.advance(200);
+    expect(env.speech.texts.at(-1) === "That's the letter bee.", 'wrong pop: the changed-words "that:B" should use the computer voice');
+    env.advance(2000);
+    expect(env.webaudio.playing === 1 && env.speech.queued.length === 0, 'wrong pop: the prompt recording did not follow the computer voice');
+    env.advance(3000);
+    // changing the letters decodes their recordings and lets go of the others
+    passGate(env);
+    bpp.ui.action('letters-preset', 'CD');
+    bpp.ui.closeSettings();
+    await flush(12);
+    expect(bpp.rec.ready().join() === 'prompt:C', 'after choosing C and D, only prompt:C should be decoded, got ' + bpp.rec.ready().join());
+    expect(playLong(env, 30).length === 0, 'rules broken while playing with recordings');
+    report('playback order: your recording, then audio/, then the computer voice', before);
   }
 }

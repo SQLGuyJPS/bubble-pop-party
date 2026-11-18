@@ -15,8 +15,8 @@ import {
 } from './parent';
 import { AUDIO_OVERRIDES, own, sourceFor } from './recordings';
 import { sanitizeSettings } from './settings';
-import { setMuted } from './sound';
-import { sayLog } from './speech';
+import { ensureAudio, setMuted } from './sound';
+import { say, sayLog } from './speech';
 import { state } from './state';
 import { readAll, storeStatus, writeClips, type ClipRecord } from './store';
 import { goneY, isLive, liveTargetBubble, pos, secondsCatchable, sparklesWanted } from './targets';
@@ -86,6 +86,7 @@ export function installDebug(): void {
       canvasMix: CANVAS_LIMIT_MIX, canvasMovingOverCached: CANVAS_LIMIT_MOVING_OVER_CACHED
     },
     sayLog,
+    say: (clip: string) => { say(clip); },
     setSettings: (o: Partial<Settings>) => { Object.assign(state.settings, o); },
     state: () => {
       const s = state;
@@ -118,6 +119,7 @@ export function installDebug(): void {
       write: (recs: ClipRecord[], remove?: string[]) => writeClips(recs, remove)
     },
     setMuted,
+    unlockAudio: () => { ensureAudio(); },   // what the first tap does
     quiet: () => { state.lastActivity = state.simTime; state.nextPromptAt = state.simTime + PROMPT_REPEAT_SECONDS; },
     pause: pauseGame,
     resume: resumeGame,
