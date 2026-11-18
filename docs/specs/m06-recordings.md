@@ -5,15 +5,24 @@ says "(Q n)". Step 2, the microphone test page, comes first; the Recordings scre
 
 ## Goal
 
-1. A **Recordings** screen in the parent area: record, play, re-record and delete each spoken clip on the iPad itself.
-2. Recordings stay **on the iPad only** (IndexedDB), never in the repository, never public, never on the network.
-3. **Backup:** save every recording to one file through the share sheet, and load that file back on any device.
+1. A **Recordings** screen in the parent area: record, play, re-record and delete each spoken clip. The parent
+   records **on the iPhone**, in the game added to the iPhone's home screen, where the microphone is better and the
+   phone is at hand.
+2. Recordings stay **on the device only** (IndexedDB), never in the repository, never public, never on the network.
+3. **Moving and backup:** save every recording to one file through the share sheet, and load that file on any
+   device. This is how recordings get **from the iPhone to the iPad**, where the child plays: AirDrop the file, then
+   load it in the iPad's Recordings screen.
 4. **One list of every spoken clip**, read by the game, the Recordings screen, `tools/update-audio.mjs` and the tests.
 5. **Storage groundwork** (IndexedDB) that Milestones 7 to 13 add to.
 6. Before any of the screen is built, a **throwaway microphone test page** proves recording works from the
    home-screen icon without spoiling the game's sound.
 
 For the child nothing changes, apart from hearing a parent's voice in place of the computer voice.
+
+**Two devices, one game.** The same game runs on both; nothing in it is iPhone-only or iPad-only. On the **iPhone**
+the parent records and saves the file. On the **iPad** the parent loads the file and the child plays. Recording on the
+iPad still works, but it isn't the usual way and the Done-when list doesn't rely on it. The iPhone was on iOS 27.2 at
+the microphone test; the iPad is on iPadOS 18.
 
 ## 1. Out of scope
 
@@ -71,12 +80,16 @@ Recordings screen can be reached without passing the gate.
 ### 2c. Recording one clip
 
 1. The parent taps **Record** (or **Re-record**). Anything playing stops first, so the game's voice is never recorded.
-2. The first time, iPadOS asks for the microphone. If the parent says no, see section 9.
-3. A recording panel covers the screen: the words in large text, a red dot, a ring that fills over the length limit,
-   and a big **Stop** button. Recording stops by itself at the limit (Q7).
+2. **Waiting for the microphone.** The iPhone asks for the microphone the first time Record is tapped after each
+   opening of the app (section 10). While it asks, the panel says "Tap Allow to let the game use the microphone" and
+   nothing is timed. If the parent says no, see section 9.
+3. **Only once the microphone is recording** (the recorder has started), the recording panel shows: the words in
+   large text, a red dot, a ring that fills over the length limit, and a big **Stop** button. The length limit is
+   counted from that moment, not from the tap, so time spent on the permission question never shortens a take.
+   Recording stops by itself at the limit (Q7).
 4. The microphone is **fully released** (section 7).
 5. The take is trimmed and levelled (section 7). If nothing was heard: "I didn't hear anything. Try again closer to
-   the iPad." Nothing is saved, and any earlier recording stays.
+   the phone." Nothing is saved, and any earlier recording stays.
 6. The take is saved and played back once (Q8). The row now shows "Your voice". There is no "Record next" button:
    the parent picks each row.
 
@@ -96,7 +109,7 @@ stays. **Delete** asks for confirmation on the row ("Delete your recording of 'C
 
 Which clip plays, for every clip:
 
-1. **The in-app recording** on this iPad, if there is one that's usable (not damaged, decoded, words unchanged: Q14);
+1. **The in-app recording** on this device (recorded here or loaded from a file), if there is one that's usable (not damaged, decoded, words unchanged: Q14);
 2. otherwise **the file in `audio/`** with that clip name, published with the game;
 3. otherwise **the computer voice**.
 
@@ -169,14 +182,14 @@ export function clipByFile(file: string): Clip | undefined;
   isn't a number between 0.1 and 10, or trims outside the clip mean the record is ignored. The row on the
   Recordings screen then says "This recording is damaged. Re-record or delete it."
 - **Blocked storage** (private mode, IndexedDB missing, open fails or never answers within 3 seconds): the game runs
-  exactly as today, with `audio/` files and the computer voice. The Recordings screen says "This iPad isn't letting
+  exactly as today, with `audio/` files and the computer voice. The Recordings screen says "This device isn't letting
   the game save recordings" and hides the Record buttons. Load from a file is also hidden; Play still works.
 - **Asking to keep it:** after the first recording is saved, the game calls `navigator.storage.persist()`. The
   Recordings screen shows the answer from `navigator.storage.persisted()`: "Kept safe from automatic clearing: Yes",
   or "No: save a backup file now and then". Safari decides this itself, so the game can only ask.
-- **Home-screen app vs Safari tab:** on iPadOS they have **separate storage**. Recordings made in the home-screen
-  app aren't seen in a Safari tab, and the other way round. When the game isn't running from the home-screen icon,
-  the Recordings screen says so: "You're in Safari. Recordings made here stay in Safari. To record for the
+- **Home-screen app vs Safari tab:** on iOS and iPadOS they have **separate storage**. Recordings made in the
+  home-screen app aren't seen in a Safari tab, and the other way round. When the game isn't running from the
+  home-screen icon, the Recordings screen says so: "You're in Safari. Recordings made here stay in Safari. To record for the
   home-screen game, open it from its icon."
 - Recordings never touch the offline helper. `sw.js` only saves the files in the build's list when it installs, and
   never stores anything while the game runs.
@@ -196,7 +209,8 @@ export function clipByFile(file: string): Clip | undefined;
   Without this step (tests A, B and D) the game's sounds came back **quieter** after a take.
 - The microphone stream is **not** connected to the game's audio context. **No level meter and no stopping on
   silence** (Q7): test D was quieter afterwards, and the meter was never tried together with the audio session.
-  Recording stops with the Stop button or at 6 seconds.
+  Recording stops with the Stop button or at 6 seconds, counted from when the recorder has started (after the
+  microphone question is answered), not from the tap.
 - **Letting go, always:** after every take, and on every early exit (Stop, the length limit, an error, the
   permission refused, leaving the screen, Done, the app going to the background, the gate's idle close),
   `recorder.stop()` if it's still running, `track.stop()` on every track, the stream and recorder are dropped,
@@ -218,19 +232,20 @@ The take is decoded with the game's audio context, then:
 - Every clip is set to the same speech loudness: the speech part's RMS is brought to **−18 dBFS**.
 - The loudest peak is never allowed above −1 dBFS, so loud takes are turned down rather than distorted.
 - The gain is capped at ×10 (+20 dB) so a very quiet take doesn't turn into hiss. A take that would need more gets
-  "That was very quiet. Try again closer to the iPad" (it's still saved, so the parent can choose).
+  "That was very quiet. Try again closer to the phone" (it's still saved, so the parent can choose).
 - The original is kept unchanged. Only `trimStart`, `trimEnd` and `gain` are stored, and they're applied when the
   clip is decoded for play.
-- The −18 target is a starting point. It is tuned by ear on the iPad against the pops and the computer voice before
+- The −18 target is a starting point. It is tuned by ear on the iPad (where the child hears it) against the pops and
+  the computer voice before
   the milestone is done.
 
 These are pure functions on sample arrays (`src/level.ts`), so the tests can feed them made-up signals.
 
 ## 8. The backup file (Q11, Q12)
 
-**Save recordings to a file** makes one file and opens the iPad's share sheet (`navigator.share({ files })`). From
-there the parent picks Save to Files, iCloud Drive, AirDrop or Mail. Where sharing a file isn't supported, the file
-downloads instead.
+**Save recordings to a file** makes one file and opens the device's share sheet (`navigator.share({ files })`). From
+there the parent picks AirDrop (to the iPad), Save to Files, iCloud Drive or Mail. Where sharing a file isn't
+supported, the file downloads instead.
 
 **Format (recommended): a plain ZIP**, named `Bubble Pop recordings 2026-11-14.zip`:
 
@@ -259,7 +274,7 @@ README.txt              two sentences: what this file is, and that it loads in t
    50 MB, with each clip under 2 MB and at most 500 entries. Otherwise: "This isn't a Bubble Pop recordings file."
 2. Checks each clip like a stored record (section 6). Unknown clip names, damaged entries and audio that won't decode
    are skipped and counted.
-3. Shows a summary and asks (Q12): "This file has 32 recordings. 12 of them are already recorded on this iPad.
+3. Shows a summary and asks (Q12): "This file has 32 recordings. 12 of them are already recorded on this device.
    **[Replace those 12]** **[Keep mine, add only the 20 new ones]** **[Cancel]**"
 4. Saves them all in one storage transaction: either everything loads, or nothing changes.
 5. Reports: "Loaded 32 recordings. 2 were skipped (damaged)."
@@ -268,25 +283,29 @@ README.txt              two sentences: what this file is, and that it loads in t
 
 | Situation | What happens |
 | --- | --- |
-| Parent refuses the microphone, or it was refused before | "The game needs the microphone to record. To allow it: Settings app, Safari, Microphone, then Allow." Nothing breaks. Record stays available, to try again. The mic is released |
+| Parent refuses the microphone, or it was refused before | "The game needs the microphone to record. To allow it: Settings app, Apps, Safari, Microphone, then Allow." Nothing breaks. Record stays available, to try again. The mic is released |
 | No microphone support (`getUserMedia` or `MediaRecorder` missing) | Record buttons hidden. "This browser can't record. You can still load a recordings file, or use the audio folder (AUDIO-GUIDE)." |
 | iOS asks for the microphone every time the app is opened | **It does** (test page, iOS 27.2 on the iPhone: permission back to "prompt" after reopening). The README says so: "The first time you tap Record after opening the game, the iPhone asks to use the microphone. Tap Allow. This is normal." |
+| Slow to answer the microphone question | Nothing is timed until recording starts (section 2c). If the question is still open after 60 seconds, the panel closes, the mic is released, and the old recording stays |
 | Phone call, Siri or the app going to the background during a take | Take cancelled, mic released, old recording kept, "Recording stopped. Try again." |
-| Storage full when saving (Q13) | Old take kept, nothing half-saved. "There's no room to save this recording. Save a backup file, then delete some recordings or free up space on the iPad." |
+| Storage full when saving (Q13) | Old take kept, nothing half-saved. "There's no room to save this recording. Save a backup file, then delete some recordings or free up space on this device." |
 | Storage blocked or damaged | Section 6. The game itself always runs |
-| A recording won't decode on this iPad (for example a file from another device) | Treated as damaged: falls back, and the row says so |
+| A recording won't decode on this device (for example a file from another device) | Treated as damaged: falls back, and the row says so |
 | The clip's words have changed since recording (Q14) | Not played. The row says "The words for this clip have changed. Please re-record." |
 | Re-record fails partway | The old take stays |
 | Tapping fast: Record twice, Play during Record, Delete during Play | Buttons are disabled while a take is recording or saving. Delete stops playback of that clip first |
 | Leaving the Recordings screen open (Q5) | After 3 minutes with no taps, it closes to the game, as the gate does after 25 seconds. A take in progress is cancelled |
 | Very long or very loud take | The length limit stops it. The peak cap turns loud takes down |
-| Same clip in the backup file and on the iPad | Q12 |
+| Same clip in the backup file and on the device | Q12 |
 | Opened in a Safari tab, not from the icon | Works, with the separate-storage note (section 6) |
 | Old database version from a later milestone downgraded | Opening fails cleanly. Treated as blocked storage, game runs on defaults |
 
 ## 10. Step 1: the microphone test page
 
 A throwaway page, built and run **before** any of the Recordings screen.
+
+**Which device:** steps 1 to 7 on the iPhone, where the parent records. Step 8 sends a recording from the iPhone and
+plays it in Mic test on the iPad, with steps 1 and 7 also done there.
 
 **Where:** `mictest/index.html` and `mictest/mictest.ts`, built into `dist/mictest/` like `perf/`. Published at
 `https://sqlguyjps.github.io/bubble-pop-party/mictest/`. Not linked from the game, `noindex`, **not in the offline
@@ -305,12 +324,12 @@ the app between steps loses nothing):
    Settings, General, About, from a short list (18.0 to 18.7, 26, Other).
 2. **Before.** **Play test sounds**: the game's own pop and fanfare (Web Audio, same code), a short decoded audio clip
    through the same context, then a computer-voice line. The parent notes how loud they are.
-3. **Record**, in three ways, each with the iPad restarted-app clean (the page says "Close Mic test fully, swipe it
+3. **Record**, in three ways, each with the iPhone restarted-app clean (the page says "Close Mic test fully, swipe it
    away, and open it again" between them):
    - **A. Plain:** `getUserMedia({ audio: true })` and MediaRecorder.
    - **B. Voice processing off:** `echoCancellation`, `noiseSuppression` and `autoGainControl` all `false`.
    - **C. Audio session:** B, plus `navigator.audioSession.type = 'play-and-record'` while recording, then
-     `'playback'` afterwards (skipped and noted if the iPad doesn't have it).
+     `'playback'` afterwards (skipped and noted if the iPhone doesn't have it).
    - **D. With a level meter:** B, plus the microphone connected to a separate audio context's analyser for a live
      meter (tells us whether a meter, and stopping on silence, are safe: Q7).
    Each one records about 4 seconds ("Say: Can you find the letter B?"), releases the mic, and plays the take back.
@@ -386,9 +405,10 @@ stopping on silence; the README warns that the microphone prompt comes back each
 - **Too quiet:** expected for a raw take with automatic volume off (tests B to D). Levelling (section 7) raises speech
   to −18 dBFS with at most ×10. Whether ×10 is enough is checked by measuring the take itself (send
   "Mic test recording.zip").
-- **Short takes:** each take recorded for 4 seconds but decoded to 2.3 and 2.6 seconds. If the missing time is at
-  the start, the first words of a clip would be cut off. Checked with the same file, and by asking whether the
-  playback began at "Can you…".
+- **Short takes (explained):** each take was meant to be 4 seconds but decoded to 2.3 and 2.6 seconds. The iPhone
+  asks for the microphone each time the app opens fresh, and the test page's countdown started at the tap, while the
+  parent was still answering that question. The game therefore counts the length limit only from when recording has
+  started (section 2c), and the panel waits for the answer first.
 
 ## 11. Layout
 
@@ -425,6 +445,9 @@ New area `tests/recordings.mjs`:
 - **Blocked storage:** with IndexedDB missing, failing, hanging or full, the game starts, plays a long simulated game
   with no errors, and the Recordings screen shows its message.
 - **Damaged records** are ignored and reported on their row; a good record next to them still plays.
+- **Length limit counted from the start of recording:** with the fake microphone answering the permission question
+  late (several seconds after the tap), nothing is timed while it waits, and the take still runs the full limit.
+  A question left open for 60 seconds closes the panel with the mic released.
 - **Microphone always released:** after a finished take, Stop, the length limit, a refusal, an error, leaving the
   screen, Done, the app going to the background, and the idle close, there are 0 live tracks and no recording
   running. The audio session is back to how it was.
@@ -448,8 +471,10 @@ Updated: `tests/screens.mjs` adds screenshots of the Recordings screen and the r
 
 ## 13. Docs
 
-- **README:** a new "Recording in the game" section, with short numbered steps: open the gate, Settings, Open
-  recordings, Record. Then the backup steps (save to Files, load on another device or after reinstalling), the
+- **README:** a new "Recording in the game" section, with short numbered steps: add the game to the iPhone's home
+  screen, open the gate, Settings, Open recordings, Record (and "the iPhone asks for the microphone each time you
+  open the game: tap Allow"). Then moving them to the iPad (Save recordings to a file, AirDrop, Load recordings on the
+  iPad), the backup steps (save to Files, load after reinstalling), the
   separate-storage note for Safari vs the icon, and what to do if the mic was refused. The parent-area section gains
   the Recordings line.
 - **AUDIO-GUIDE:** start with "The easiest way: record in the game (README)". Keep the `audio/` folder steps for
@@ -466,8 +491,8 @@ Each step is its own commit, and all checks pass from step 3 on.
 
 1. This spec, agreed.
 2. **Microphone test page** (section 10), with this spec, in its own small pull request merged to `main` so it is
-   published (Q1). You run it on the iPad and send the results. The results go into sections 7 and 10. **The
-   Recordings screen waits for this.** The rest of the milestone is one pull request afterwards.
+   published (Q1). You run it on the iPhone (steps 1 to 8) and the iPad (steps 1, 7 and 8) and send the results.
+   The results go into sections 7 and 10. **The Recordings screen waits for this.** The rest of the milestone is one pull request afterwards.
 3. Clip list: `src/clips.ts`; `speech.ts`, `recordings.mjs` and `update-audio.mjs` read it. Spoken sample identical.
 4. Storage: `store.ts`, fake IndexedDB in the harness, blocked and damaged storage checks.
 5. Playback order: in-app, then `audio/`, then voice, with stored clips put in by the tests.
@@ -476,7 +501,7 @@ Each step is its own commit, and all checks pass from step 3 on.
 8. The Recordings screen and recording panel, inside the parent area, with their checks.
 9. Backup and load (`bundle.ts`) with their checks.
 10. Screenshots, docs.
-11. Try it on the iPad (Done-when list). Tune the −18 dBFS target by ear. Delete the test page (Q3).
+11. Try it on the iPhone and the iPad (Done-when list). Tune the −18 dBFS target by ear. Delete the test page (Q3).
 
 ## 15. Done when
 
@@ -484,14 +509,16 @@ Each step is its own commit, and all checks pass from step 3 on.
 - [ ] The spoken-lines sample is unchanged.
 - [ ] No file in `src/` is over about 400 lines.
 - [ ] The microphone test results are in this spec (iPhone: done; iPad: waiting), and the game uses what they showed.
-- [ ] On the iPad, **from the home-screen icon**: record a few clips; the child hears them in the game; the pops and
-      the computer voice are **as loud as before and from the speakers**, also after several takes; the mic dot goes
-      away after each take.
-- [ ] Recordings survive closing the app, restarting the iPad, and an update of the game.
-- [ ] With Airplane Mode on: recording, playing and the game all work.
-- [ ] Save recordings to a file in Files, delete them all in the game, load the file: they're back and play.
+- [ ] On the iPhone, **from the home-screen icon**: record a few clips, including the first take after opening the
+      app (the microphone question doesn't shorten it); the pops and the computer voice are **as loud as before and
+      from the speakers**, also after several takes; the mic dot goes away after each take.
+- [ ] Save recordings to a file on the iPhone, AirDrop it to the iPad, load it in the game on the iPad (from its
+      home-screen icon): the child hears the recordings in the game, at a comfortable loudness.
+- [ ] Recordings survive closing the app, restarting the device, and an update of the game, on both devices.
+- [ ] With Airplane Mode on: recording (iPhone), playing (iPad) and the game all work.
+- [ ] On the iPad, delete them all in the game, load the file again: they're back and play.
 - [ ] Clips at the same loudness as each other, and comfortable next to the pops (tuned by ear).
-- [ ] `git status` shows no recordings: nothing recorded on the iPad is in the repository.
+- [ ] `git status` shows no recordings: nothing recorded on either device is in the repository.
 - [ ] README, AUDIO-GUIDE, CLAUDE.md and ROADMAP are updated.
 
 ## 16. Risks
