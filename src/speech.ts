@@ -4,7 +4,7 @@ import { CHEER_PAUSE_MS } from './config';
 import { clipByName } from './clips';
 import { AUDIO_OVERRIDES } from './recordings';
 import { audioCtx, clipBuffers, master } from './sound';
-import { state, type Key } from './state';
+import { state } from './state';
 
 /* "Hear it" in Settings plays the tricky letter A's cheer. It isn't a clip and can't be recorded. */
 const VOICETEST = 'cheer:A';

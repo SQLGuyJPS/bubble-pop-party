@@ -13,11 +13,12 @@ import {
   cancelHold, closeGate, closeSettings, doAction, gate, hearVoice, openGate, openSettings, pressKey, settingsOpen,
   startHold
 } from './parent';
-import { AUDIO_OVERRIDES } from './recordings';
+import { AUDIO_OVERRIDES, own, sourceFor } from './recordings';
 import { sanitizeSettings } from './settings';
 import { setMuted } from './sound';
 import { sayLog } from './speech';
 import { state } from './state';
+import { readAll, storeStatus, writeClips, type ClipRecord } from './store';
 import { goneY, isLive, liveTargetBubble, pos, secondsCatchable, sparklesWanted } from './targets';
 
 export function debugWanted(): boolean {
@@ -104,6 +105,18 @@ export function installDebug(): void {
       hear: hearVoice, sanitize: sanitizeSettings
     },
     overrides: AUDIO_OVERRIDES,
+    rec: {
+      status: () => storeStatus,
+      saved: () => [...own.saved].sort(),
+      ready: () => Object.keys(own.buffers).sort(),
+      problems: () => ({ ...own.problems }),
+      source: sourceFor,
+      readAll: async () => {
+        const r = await readAll();
+        return { good: [...r.records.keys()].sort(), damaged: [...r.damaged].sort() };
+      },
+      write: (recs: ClipRecord[], remove?: string[]) => writeClips(recs, remove)
+    },
     setMuted,
     quiet: () => { state.lastActivity = state.simTime; state.nextPromptAt = state.simTime + PROMPT_REPEAT_SECONDS; },
     pause: pauseGame,

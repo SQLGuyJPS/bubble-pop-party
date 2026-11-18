@@ -5,6 +5,7 @@ import { els, findElements } from './dom';
 import { forgetFontSize, initCanvas, resize } from './draw';
 import { handlePointer, onPlay, pauseGame, resumeGame } from './game';
 import { wireParent } from './parent';
+import { loadSavedList } from './recordings';
 import { loadSettings } from './settings';
 import { audioCtx, ensureAudio, setMuted } from './sound';
 import { initSpeech, say } from './speech';
@@ -12,6 +13,7 @@ import { state } from './state';
 
 loadSettings();
 initSpeech();
+void loadSavedList();   // which clips have a recording made in the game (storage may be blocked: then none)
 ensureAudio(true);   // start decoding the recordings now, so the very first prompt is already ready
 findElements();
 initCanvas(els.canvas);

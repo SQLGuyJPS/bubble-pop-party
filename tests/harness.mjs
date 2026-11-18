@@ -32,6 +32,76 @@ export function mulberry(seed) {
   };
 }
 
+// ---------- fake IndexedDB ----------
+// newIDB() is a database that outlives the page, like real storage: pass it to several makeEnv() calls to open the
+// game again on the same device. Its `mode` switches: 'ok', 'missing' (no indexedDB at all), 'fail' (opening
+// fails), 'hang' (opening never answers), 'full' (every write is refused as over quota).
+export function newIDB(mode = 'ok') { return { mode, version: 0, stores: new Map(), keyPaths: {}, writes: 0, failNextWrite: false }; }
+export const flush = async (n = 6) => { for (let i = 0; i < n; i++) await new Promise((r) => setImmediate(r)); };
+function fakeIndexedDB(db) {
+  const later = (fn) => { Promise.resolve().then(fn); };
+  const clone = (v) => (v === undefined ? undefined : structuredClone(v));
+  const fire = (r, ev, e) => { const h = r['on' + ev]; if (h) h(e || {}); };
+  function connection() {
+    return {
+      get version() { return db.version; },
+      objectStoreNames: { contains: (n) => db.stores.has(n) },
+      close() {},
+      createObjectStore(name, o) { db.stores.set(name, new Map()); db.keyPaths[name] = o && o.keyPath; return {}; },
+      transaction(names, mode) {
+        const writes = [];
+        let open = 0, failed = null;
+        const tx = { oncomplete: null, onerror: null, onabort: null, error: null, mode };
+        const req = (fn) => {
+          const r = { result: undefined, error: null, onsuccess: null, onerror: null };
+          open++;
+          later(() => { open--; try { r.result = fn(); fire(r, 'success'); } catch (e) { r.error = e; fire(r, 'error'); } });
+          return r;
+        };
+        tx.objectStore = (name) => {
+          const store = db.stores.get(name);
+          if (!store) { const e = new Error('no store ' + name); e.name = 'NotFoundError'; throw e; }
+          return {
+            get: (k) => req(() => clone(store.get(k))),
+            getAll: () => req(() => [...store.values()].map(clone)),
+            getAllKeys: () => req(() => [...store.keys()]),
+            put: (v) => { const k = v[db.keyPaths[name]]; const c = clone(v); writes.push(() => store.set(k, c)); return req(() => k); },
+            delete: (k) => { writes.push(() => store.delete(k)); return req(() => undefined); },
+            clear: () => { writes.push(() => store.clear()); return req(() => undefined); }
+          };
+        };
+        const commit = () => {
+          if (open > 0) { setImmediate(commit); return; }
+          if (writes.length && (db.mode === 'full' || db.failNextWrite)) {
+            failed = db.mode === 'full' ? 'QuotaExceededError' : 'UnknownError';
+            db.failNextWrite = false;
+          }
+          if (failed) { tx.error = { name: failed }; fire(tx, 'error'); fire(tx, 'abort'); return; }
+          writes.forEach((w) => w());
+          if (writes.length) db.writes++;
+          fire(tx, 'complete');
+        };
+        setImmediate(commit);
+        return tx;
+      }
+    };
+  }
+  return {
+    open(name, version) {
+      const r = { result: undefined, error: null, onsuccess: null, onerror: null, onupgradeneeded: null, onblocked: null };
+      if (db.mode === 'hang') return r;
+      later(() => {
+        if (db.mode === 'fail') { r.error = { name: 'UnknownError' }; fire(r, 'error'); return; }
+        if (db.version > version) { r.error = { name: 'VersionError' }; fire(r, 'error'); return; }
+        r.result = connection();
+        if (db.version < version) { const old = db.version; db.version = version; fire(r, 'upgradeneeded', { oldVersion: old, newVersion: version }); }
+        fire(r, 'success');
+      });
+      return r;
+    }
+  };
+}
+
 // ---------- fake browser ----------
 export function makeEnv(opts) {
   const timers = [];
@@ -132,6 +202,7 @@ export function makeEnv(opts) {
       setItem: (k, v) => { opts.storage.set(k, String(v)); }
     };
   }
+  if (opts.idb && opts.idb.mode !== 'missing') context.indexedDB = fakeIndexedDB(opts.idb);
   context.window = context;
   context.__BPP_TEST = true;
   context.addEventListener = () => {};
