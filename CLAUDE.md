@@ -30,8 +30,8 @@ Safari, opened from the home-screen icon) and published with GitHub Pages at `/b
 - **Only one spoken line at a time.** Never a queue of them.
 - **Every setting is behind the parent gate** (3-second hold, then a sum). Nothing the child can reach leaves the
   game or changes a setting.
-- **Spoken lines say letter names** ("bee"), not sounds. Every new spoken line goes into the clip list, so it can be
-  recorded, and into `AUDIO-GUIDE.md`.
+- **Spoken lines say letter names** ("bee"), not sounds. Every new spoken line goes into the clip list
+  (`src/clips.ts`), so it can be recorded, and into `AUDIO-GUIDE.md`.
 
 ## Settings
 
@@ -61,9 +61,15 @@ saved its settings. Say so in the pull request and the README.
 
 - `src/` TypeScript modules: `config` (constants, defaults, speed limits), `state` (the one shared, changing state
   object), `items`, `settings`, `speech`, `sound`, `targets`, `draw`, `game`, `banner`, `parent`, `debug`, `dom`,
-  `recordings`, `main` (start-up), `sw` (offline helper), `styles.css`. Keep each under about 400 lines.
+  `recordings` (where each clip comes from: in-app, then `audio/`, then the voice), `clips` (the list of every spoken
+  clip, also read by the tools), `store` (IndexedDB), `mic` (getUserMedia, MediaRecorder, `releaseMic()`), `level`
+  (trimming and levelling, pure), `bundle` (the backup ZIP), `recscreen` (the Recordings screen and recording panel),
+  `backup` (its Backup section), `main` (start-up), `sw` (offline helper), `styles.css` (with `recscreen.css`). Keep
+  each under about 400 lines.
 - `tools/build.mjs` builds `dist/`; the recordings list and the offline file list and version are made there.
-- `tests/harness.mjs` is the fake browser; `tests/run.mjs` runs one file per area. The tests load `dist/game.js`
+  `tools/clips.mjs` loads `src/clips.ts` into Node for the tools and the tests.
+- `tests/harness.mjs` is the fake browser (with fake IndexedDB, microphone, Web Audio and share sheet);
+  `tests/run.mjs` runs one file per area. The tests load `dist/game.js`
   and talk to the game only through the `window.__bpp` hooks in `src/debug.ts`.
 - `perf/` is the speed test page. `mictest/` is the microphone test page (Milestone 6 only, then deleted); neither
   is saved for offline use. `index.html` and `sw.js` must stay at the site root.

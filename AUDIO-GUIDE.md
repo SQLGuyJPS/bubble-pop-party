@@ -4,6 +4,19 @@ The computer voice is a fallback. You can replace any of it with your own record
 plays yours instead. You don't have to record everything: **any clip you skip keeps using the
 computer voice**, so you can start with just the letter A and add more over time.
 
+## The easiest way: record in the game
+
+Open the parent area, then **Settings**, then **Open recordings**, and tap **Record** next to each line. The game
+cuts off the silence, evens out the volume and keeps the recordings on the device only. The README explains it step by
+step, including moving them from the iPhone to the iPad: see **"Recording in the game"** in [README.md](README.md).
+
+The rest of this guide is the other way: **files in the `audio/` folder**, published with the game. Use it only if
+you want the recordings to be part of the game for everyone who opens it, and remember that **files in `audio/` are
+public**.
+
+Which one plays: a recording made in the game on that device comes first, then a file in `audio/`, then the computer
+voice.
+
 ## 1. What to record
 
 For each letter or number the game needs three short clips, plus one celebration clip for the whole game.
@@ -17,15 +30,17 @@ For each letter or number the game needs three short clips, plus one celebration
 | `bye` | "All done! Great playing. Bye bye!" | When the play time you set is up |
 
 For numbers it is the same idea: `prompt-3` "Can you find the number 3?", `cheer-3` "Great!" *(pause)* "Three stars.",
-`that-3` "That's the number three."
+`that-3` "That's the number 3."
 
-To see the exact words for your current letters and numbers, run this in the project folder:
+The words come from the game's own list of lines (`src/clips.ts`), the same list the Recordings screen shows. To see
+the exact words, and when each line plays, run this in the project folder:
 
 ```bash
 node tools/update-audio.mjs --script
 ```
 
-Add `--all` to also see every other letter and number. For the default A–E and 1–5 that's
+It shows the default letters and numbers. Add `--all` to also see every other letter and number. For the default
+A–E and 1–5 that's
 5 × 3 + 5 × 3 + 2 = **32 clips**.
 
 ### Tips for a good recording
@@ -100,8 +115,9 @@ Recordings in `audio/` are part of the game, so they go out with the next update
 automatically. The README ("Sending an update to the iPad") explains how the iPad picks up the new version.
 
 **Files in `audio/` are public**, because the repository is public: anyone can download them. If you'd rather keep
-your family's voices private, wait for Milestone 6, which records clips inside the game and keeps them only on the
-iPad.
+your family's voices private, record in the game instead (see the top of this guide): those recordings stay on your
+devices only. The same goes for the `.m4a` files inside a recordings backup file: copying them into `audio/` makes
+them public.
 
 ## If something sounds wrong
 
