@@ -183,15 +183,20 @@ export function clipByFile(file: string): Clip | undefined;
 
 ## 7. Recording and processing
 
-### Microphone (details set by the test page, section 10)
+### Microphone (set by the test page results, section 10)
 
-- Record: `navigator.mediaDevices.getUserMedia({ audio: … })`, then a `MediaRecorder` on that stream, in the format
-  the test page finds (expected `audio/mp4`, AAC).
-- The microphone stream is **not** connected to the game's audio context. iOS can switch the whole app into
-  "call" audio (quieter, or out of the earpiece) when the microphone joins a playing audio context. The test page
-  checks whether a separate level meter is safe (Q7).
-- If the test shows it helps, `navigator.audioSession.type` is set to `'play-and-record'` while recording and back to
-  `'playback'` (or `'auto'`) straight after.
+- Record: `navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false,
+  autoGainControl: false } })`, then a `MediaRecorder` on that stream. The format is **`audio/mp4`** (AAC,
+  `mp4a.40.2`), saved with the extension **`.m4a`**. If `audio/mp4` isn't supported, the browser's own default is
+  used and the file is named from its type.
+- **Audio session (test C, the only way that kept the sound the same):** `navigator.audioSession.type` is set to
+  `'play-and-record'` just before `getUserMedia`, and to `'playback'` in `releaseMic()`. It stays `'playback'` until
+  the app is closed; on an iPhone this means the game's sounds also play with silent mode on, which is fine for the
+  parent's recording session. Where `navigator.audioSession` is missing, recording still works without it.
+  Without this step (tests A, B and D) the game's sounds came back **quieter** after a take.
+- The microphone stream is **not** connected to the game's audio context. **No level meter and no stopping on
+  silence** (Q7): test D was quieter afterwards, and the meter was never tried together with the audio session.
+  Recording stops with the Stop button or at 6 seconds.
 - **Letting go, always:** after every take, and on every early exit (Stop, the length limit, an error, the
   permission refused, leaving the screen, Done, the app going to the background, the gate's idle close),
   `recorder.stop()` if it's still running, `track.stop()` on every track, the stream and recorder are dropped,
@@ -265,7 +270,7 @@ README.txt              two sentences: what this file is, and that it loads in t
 | --- | --- |
 | Parent refuses the microphone, or it was refused before | "The game needs the microphone to record. To allow it: Settings app, Safari, Microphone, then Allow." Nothing breaks. Record stays available, to try again. The mic is released |
 | No microphone support (`getUserMedia` or `MediaRecorder` missing) | Record buttons hidden. "This browser can't record. You can still load a recordings file, or use the audio folder (AUDIO-GUIDE)." |
-| iPadOS asks for the microphone every time the app is opened | Expected in home-screen apps on some versions. The test page records whether it happens. If it does, the README says so |
+| iOS asks for the microphone every time the app is opened | **It does** (test page, iOS 27.2 on the iPhone: permission back to "prompt" after reopening). The README says so: "The first time you tap Record after opening the game, the iPhone asks to use the microphone. Tap Allow. This is normal." |
 | Phone call, Siri or the app going to the background during a take | Take cancelled, mic released, old recording kept, "Recording stopped. Try again." |
 | Storage full when saving (Q13) | Old take kept, nothing half-saved. "There's no room to save this recording. Save a backup file, then delete some recordings or free up space on the iPad." |
 | Storage blocked or damaged | Section 6. The game itself always runs |
@@ -349,6 +354,41 @@ Storage: IndexedDB OK · persist: yes · share a .zip: yes · load back: yes
 that keeps "Same" for everything); whether the Recordings screen can have a level meter and stop on silence; whether
 the README must warn about the mic prompt repeating. The answers are written into this spec (section 7) before the
 screen is built.
+
+### Results (2026-11-18, iPhone)
+
+From the Results screen of Mic test on the **iPhone, iOS 27.2** (Safari 27.2), opened from its home-screen icon,
+device and version confirmed against Settings:
+
+| Finding | Result | Mark |
+| --- | --- | --- |
+| Format | `audio/mp4; codecs=mp4a.40.2`, 2.3 s, 58 KB, plays back. Can record: mp4, mp4 AAC, webm Opus | OK |
+| A Plain | game sounds **quieter** after, voice same, mic dot gone, 48000 Hz throughout, echo cancelling on | Check |
+| B Voice processing off | sounds **quieter**, voice same, dot gone, 48000 Hz | Check |
+| C Audio session | sounds **same**, voice same, dot gone, 48000 Hz, session auto → play-and-record → playback | OK |
+| D Level meter | sounds **quieter**, voice same, dot gone, 48000 Hz, meter heard | Check |
+| Asks for the mic again after reopening | **Yes** (permission "prompt") | Check |
+| Storage | IndexedDB ok, persist true, 41.2 GB free | OK |
+| Share a .zip and load it back | yes, yes | OK |
+| Send a recording (step 8) | yes | OK |
+| Recording from the iPhone (2.6 s) played in Mic test on the iPhone | decodes, heard **too quiet** | Check |
+
+The sample rate never changed, so the "quieter" effect doesn't show in the numbers; only the ear catches it, and
+only the audio session step (C) avoided it. The computer voice was never affected.
+
+**Decided from these results** (section 7): `audio/mp4` and `.m4a`; recording as test C; no level meter and no
+stopping on silence; the README warns that the microphone prompt comes back each time the app is opened.
+
+**Still open:**
+
+- **The iPad side of step 8** (load the iPhone's recording in Mic test on the iPad and play it) and steps 1 and 7 on
+  the iPad: waiting for the iPad's Results screenshot. The "too quiet" line above was played on the iPhone.
+- **Too quiet:** expected for a raw take with automatic volume off (tests B to D). Levelling (section 7) raises speech
+  to −18 dBFS with at most ×10. Whether ×10 is enough is checked by measuring the take itself (send
+  "Mic test recording.zip").
+- **Short takes:** each take recorded for 4 seconds but decoded to 2.3 and 2.6 seconds. If the missing time is at
+  the start, the first words of a clip would be cut off. Checked with the same file, and by asking whether the
+  playback began at "Can you…".
 
 ## 11. Layout
 
@@ -443,7 +483,7 @@ Each step is its own commit, and all checks pass from step 3 on.
 - [ ] `npm test` ends with `0 problems found`, on your computer and in GitHub Actions.
 - [ ] The spoken-lines sample is unchanged.
 - [ ] No file in `src/` is over about 400 lines.
-- [ ] The microphone test results are in this spec, and the game uses what they showed.
+- [ ] The microphone test results are in this spec (iPhone: done; iPad: waiting), and the game uses what they showed.
 - [ ] On the iPad, **from the home-screen icon**: record a few clips; the child hears them in the game; the pops and
       the computer voice are **as loud as before and from the speakers**, also after several takes; the mic dot goes
       away after each take.
