@@ -6,7 +6,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { clips as list } from '../tools/clips.mjs';
 import { findRecordings } from '../tools/recordings.mjs';
-import { root, report, stats, expect, freshGame, runFor, targetBubble, tapBubble, newIDB, flush, passGate, UNDECODABLE } from './harness.mjs';
+import { root, report, stats, expect, freshGame, runFor, targetBubble, tapBubble, newIDB, flush, passGate, UNDECODABLE, takeSignal, loadModule } from './harness.mjs';
 
 // A saved recording as the game stores it. The audio is made-up bytes; the fake decoder turns it into a signal.
 export function record(clip, extra = {}) {
@@ -204,5 +204,66 @@ export default async function () {
     expect(bpp.rec.ready().join() === 'prompt:C', 'after choosing C and D, only prompt:C should be decoded, got ' + bpp.rec.ready().join());
     expect(playLong(env, 30).length === 0, 'rules broken while playing with recordings');
     report('playback order: your recording, then audio/, then the computer voice', before);
+  }
+
+  // ---------- trimming and levelling (src/level.ts, made-up signals) ----------
+  {
+    const before = stats.failures;
+    const L = await loadModule('src/level.ts');
+    const rate = 48000, W = L.WINDOW_SECONDS;
+    const dbOf = (x) => 20 * Math.log10(x);
+    const rmsOf = (x, a = 0, b = x.length) => { let s = 0; for (let i = a; i < b; i++) s += x[i] * x[i]; return Math.sqrt(s / (b - a)); };
+    const near = (a, b, tol) => Math.abs(a - b) <= tol;
+    const mono = (o) => takeSignal({ channels: 1, ...o }).channels[0];
+
+    // silence, then a tone, then silence: trimmed to within one window of the tone, plus the margins
+    let x = mono({ seconds: 2, from: 0.5, to: 1.5, amp: 0.05 });
+    let a = L.analyse(x, rate);
+    expect(a.heard && near(a.trimStart, 0.5 - L.KEEP_BEFORE, W) && near(a.trimEnd, 1.5 + L.KEEP_AFTER, W),
+      `the tone at 0.5-1.5 s should be kept from ${0.5 - L.KEEP_BEFORE} to ${1.5 + L.KEEP_AFTER} s, got ${a.trimStart.toFixed(3)}-${a.trimEnd.toFixed(3)}`);
+    // a short click at the start (the tap on Record) is not speech
+    const clicked = x.slice();
+    for (let i = Math.round(0.1 * rate); i < Math.round(0.11 * rate); i++) clicked[i] = 0.6 * (i % 2 ? 1 : -1);
+    a = L.analyse(clicked, rate);
+    expect(a.heard && near(a.trimStart, 0.5 - L.KEEP_BEFORE, W), `a click at 0.1 s moved the start of the speech to ${a.trimStart.toFixed(3)} s`);
+    // a quiet take (like the real one: speech at about -35 dBFS) is raised to the target
+    x = mono({ from: 0.4, to: 1.6, amp: 0.0255 });
+    a = L.analyse(x, rate);
+    let out = L.render(x, rate, a.trimStart, a.trimEnd, a.gain);
+    const sA = Math.round((0.4 - a.trimStart) * rate), sB = Math.round((1.6 - a.trimStart) * rate);
+    expect(near(a.speechDb, -34.8, 0.5) && !a.quiet && near(dbOf(rmsOf(out, sA, sB)), L.TARGET_DBFS, 0.3),
+      `a quiet take (${a.speechDb.toFixed(1)} dBFS) should come out at ${L.TARGET_DBFS} dBFS, got ${dbOf(rmsOf(out, sA, sB)).toFixed(1)}`);
+    // a loud take is turned down to the target, its peak under the cap
+    x = mono({ from: 0.4, to: 1.6, amp: 0.95 });
+    a = L.analyse(x, rate);
+    out = L.render(x, rate, a.trimStart, a.trimEnd, a.gain);
+    expect(a.gain < 1 && near(dbOf(rmsOf(out, sA, sB)), L.TARGET_DBFS, 0.3), 'a loud take was not turned down to the target');
+    // a quiet take with one loud peak is held to the peak cap rather than distorted
+    x = mono({ from: 0.4, to: 1.6, amp: 0.02 });
+    x[Math.round(1.0 * rate)] = 0.5;
+    a = L.analyse(x, rate);
+    out = L.render(x, rate, a.trimStart, a.trimEnd, a.gain);
+    const peak = out.reduce((m, v) => Math.max(m, Math.abs(v)), 0);
+    expect(dbOf(peak) <= L.PEAK_CAP_DBFS + 0.01 && near(dbOf(peak), L.PEAK_CAP_DBFS, 0.1), `the peak should be held at ${L.PEAK_CAP_DBFS} dBFS, got ${dbOf(peak).toFixed(2)}`);
+    // only noise: "I didn't hear anything"
+    a = L.analyse(mono({ amp: 0, noise: 0.01 }), rate);
+    expect(!a.heard, 'a take of only noise was taken for speech');
+    a = L.analyse(new Float32Array(rate), rate);
+    expect(!a.heard, 'a silent take was taken for speech');
+    // very quiet: the gain never goes over the cap, and it says so
+    x = mono({ from: 0.4, to: 1.6, amp: 0.006, noise: 0.00001 });
+    a = L.analyse(x, rate);
+    expect(a.heard && a.quiet && a.gain === L.GAIN_CAP, `a very quiet take should get the capped gain ${L.GAIN_CAP} and a note, got ${a.gain.toFixed(2)} quiet=${a.quiet}`);
+    for (let k = 0; k < 40; k++) {
+      const g = L.analyse(mono({ from: 0.3, to: 0.3 + 0.1 + k * 0.05, amp: 0.001 * (k + 1), noise: 0.00002 * (k % 5) }), rate).gain;
+      expect(g <= L.GAIN_CAP && g >= L.GAIN_FLOOR, 'the gain went outside its limits: ' + g);
+    }
+    // stereo takes are mixed to one channel; the fades leave no click at either end
+    const m = L.mixToMono([new Float32Array([1, 0.5, 0]), new Float32Array([0, 0.5, 1])]);
+    expect(m.length === 3 && m.every((v) => v === 0.5), 'two channels were not mixed to one');
+    out = L.render(new Float32Array(rate).fill(0.5), rate, 0.1, 0.9, 1);
+    expect(out[0] === 0 && Math.abs(out[out.length - 1]) < 1e-6 && out[Math.round(rate * 0.4)] === 0.5, 'render() should fade in and out, and keep the middle');
+    expect(L.render(new Float32Array(rate), rate, 0.1, 3, 1) === null, 'trim points past the end of the take should count as damaged');
+    report('trimming and levelling', before);
   }
 }

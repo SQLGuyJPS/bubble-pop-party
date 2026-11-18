@@ -22,6 +22,13 @@ export function fail(msg) {
 export function expect(cond, msg) { if (!cond) fail(msg); }
 export function report(name, before) { console.log(`${stats.failures === before ? 'ok  ' : 'FAIL'} ${name}`); }
 
+// Loads one of the game's own modules (TypeScript in src/) into Node, compiled in memory, for checks of pure functions.
+export async function loadModule(rel) {
+  const { build } = await import('esbuild');
+  const out = await build({ entryPoints: [path.join(root, rel)], bundle: true, format: 'esm', platform: 'neutral', write: false, logLevel: 'silent' });
+  return import('data:text/javascript;base64,' + Buffer.from(out.outputFiles[0].text).toString('base64'));
+}
+
 // ---------- seeded random numbers, so a failure can be repeated ----------
 export function mulberry(seed) {
   return function () {
