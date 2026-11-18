@@ -406,8 +406,10 @@ stopping on silence; the README warns that the microphone prompt comes back each
   to −18 dBFS with at most ×10. Whether ×10 is enough is checked by measuring the take itself (send
   "Mic test recording.zip").
 - **Short takes (explained):** each take was meant to be 4 seconds but decoded to 2.3 and 2.6 seconds. The iPhone
-  asks for the microphone each time the app opens fresh, and the test page's countdown started at the tap, while the
-  parent was still answering that question. The game therefore counts the length limit only from when recording has
+  asks for the microphone each time the app opens fresh, and the test page's on-screen countdown started at the tap,
+  while the parent was still answering that question. The recorder itself ran from when the microphone started, so
+  the countdown reached 0 early and the parent tapped Stop then, cutting the take short. Nothing was lost by the
+  iPhone. The game therefore counts the length limit only from when recording has
   started (section 2c), and the panel waits for the answer first.
 
 ## 11. Layout
