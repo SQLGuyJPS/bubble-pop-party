@@ -140,7 +140,7 @@
         <select id="voiceSel" aria-label="Voice"></select>
         <button type="button" id="hearBtn">Hear it</button>
       </div>
-      <p class="note">Your own recordings (see AUDIO-GUIDE.md) play instead of this voice.</p>
+      <p class="note">Your recordings play instead of this voice. "Hear it" always uses the computer voice.</p>
     </div>
 
     <h3>Play time</h3>
@@ -152,9 +152,35 @@
     </div>
     <p class="note">When time is up she sees a goodbye screen. Starting again needs the parent gate.</p>
 
+    <h3>Recordings</h3>
+    <div class="seg recLine">
+      <p id="recSummary"></p>
+      <button type="button" class="opt" id="recOpen">Open recordings</button>
+    </div>
+
     <p class="note" id="versionNote"></p>
 
     <div class="doneBar"><button type="button" id="doneBtn">Done</button></div>
+  </div>
+
+  <div class="panel hidden" id="recPanel">
+    <div class="recTop">
+      <button type="button" class="opt" id="recBack">&lsaquo; Back to settings</button>
+      <h2>Recordings</h2>
+    </div>
+    <div id="recBody"></div>
+  </div>
+
+  <div id="recTake" class="hidden" role="dialog" aria-live="polite">
+    <div class="takeBox">
+      <p id="takeWords"></p>
+      <div id="takeRing">
+        <svg viewBox="0 0 100 100" aria-hidden="true"><circle class="track" cx="50" cy="50" r="44"/><circle class="prog" cx="50" cy="50" r="44"/></svg>
+        <span class="dot"></span>
+      </div>
+      <p id="takeStatus"></p>
+      <button type="button" id="takeStop">Stop</button>
+    </div>
   </div>
 </div>
 

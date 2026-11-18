@@ -128,7 +128,7 @@ export function takeSignal({ seconds = 2.4, rate = 48000, from = 0.4, to = 1.6, 
   }
   return { rate, channels: Array.from({ length: channels }, () => mono.slice()) };
 }
-function fakeWebAudio(opts, webaudio, setT, clearT) {
+function fakeWebAudio(opts, webaudio, setT, clearT, starting) {
   class AudioBuffer {
     constructor(ch, len, rate) { this.numberOfChannels = ch; this.length = len; this.sampleRate = rate; this.duration = len / rate; this._d = Array.from({ length: ch }, () => new Float32Array(len)); this.from = 'create'; }
     getChannelData(i) { return this._d[i]; }
@@ -147,6 +147,7 @@ function fakeWebAudio(opts, webaudio, setT, clearT) {
         start() {
           const b = src.buffer;
           if (!b || b.duration < 0.2) return;          // the pop's noise and the silent unlock sound
+          starting();
           webaudio.played.push(b);
           webaudio.playing++;
           webaudio.maxPlaying = Math.max(webaudio.maxPlaying, webaudio.playing);
@@ -171,7 +172,8 @@ function fakeWebAudio(opts, webaudio, setT, clearT) {
 
 // ---------- fake microphone (only with makeEnv({ mic: {...} })) ----------
 // mic.answer: 'allow' (default), 'refuse', 'error' or 'never'; mic.answerAfterMs: how long the parent takes to answer
-// the microphone question; mic.session: false for no navigator.audioSession; mic.types: what MediaRecorder supports.
+// the microphone question; mic.fill: the byte the take is made of (the fake decoder can read it);
+// mic.session: false for no navigator.audioSession; mic.types: what MediaRecorder supports.
 function fakeMicrophone(o, setT, now) {
   const m = { asks: 0, constraints: [], tracks: [], recorders: [], sessionAtAsk: [], answer: 'allow', answerAfterMs: 300, types: ['audio/mp4'], ...o };
   m.session = o.session === false ? null : { type: 'auto' };
@@ -202,7 +204,7 @@ function fakeMicrophone(o, setT, now) {
       if (this.state === 'inactive') { const e = new Error('inactive'); e.name = 'InvalidStateError'; throw e; }
       this.state = 'inactive';
       this.ms = now() - this.startedAt;
-      const bytes = new Uint8Array(Math.max(1, Math.round(this.ms))).fill(m.silent ? 1 : 7);
+      const bytes = new Uint8Array(Math.max(1, Math.round(this.ms))).fill(m.fill ?? 7);
       setT(() => { if (this.ondataavailable) this.ondataavailable({ data: new Blob([bytes], { type: this.mimeType }) }); if (this.onstop) this.onstop(); }, 20);
     }
   }
@@ -235,11 +237,12 @@ export function makeEnv(opts) {
     set(target, prop, value) { target[prop] = value; return true; }
   });
   const makeEl = () => ({
-    style: {}, textContent: '', clientWidth: 1024, clientHeight: 768, width: 0, height: 0, offsetWidth: 0,
+    style: { setProperty() {} }, textContent: '', innerHTML: '', clientWidth: 1024, clientHeight: 768, width: 0, height: 0, offsetWidth: 0,
     children: [],
     classList: { add() {}, remove() {}, toggle() {}, contains: () => false },
     setAttribute() {},
     getAttribute: () => null,
+    hasAttribute: () => false,
     querySelectorAll: () => [],
     addEventListener() {},
     getContext: () => ctx2d,
@@ -253,8 +256,10 @@ export function makeEnv(opts) {
     fonts: undefined
   };
 
+  const webaudio = { contexts: 0, played: [], playing: 0, maxPlaying: 0, decodes: 0 };
   // fake speech: counts how many utterances are waiting so we can prove it never exceeds one
-  const speech = { queued: [], maxQueued: 0, spoken: 0, cancels: 0, texts: [], times: [], volumes: [] };
+  const speech = { queued: [], maxQueued: 0, spoken: 0, cancels: 0, texts: [], times: [], volumes: [], overlaps: 0 };
+  const sounding = () => speech.queued.length + audio.playing.length + webaudio.playing;   // spoken lines playing now
   const speechSynthesis = {
     getVoices: () => [
       { name: 'Bad News', lang: 'en-US', voiceURI: 'bn' },
@@ -263,6 +268,7 @@ export function makeEnv(opts) {
     ],
     addEventListener() {},
     speak(u) {
+      if (sounding() > 0) speech.overlaps++;
       speech.queued.push(u);
       speech.spoken++;
       speech.texts.push(u.text);
@@ -285,6 +291,7 @@ export function makeEnv(opts) {
     constructor(src) { this.src = src; audio.created.push(src); }
     play() {
       if (opts.audio === 'fail') return Promise.reject(new Error('cannot play'));
+      if (sounding() > 0) speech.overlaps++;
       audio.playing.push(this);
       audio.maxPlaying = Math.max(audio.maxPlaying, audio.playing.length);
       this._timer = fakeSetTimeout(() => { audio.playing = audio.playing.filter((x) => x !== this); if (this.onended) this.onended(); }, 1000);
@@ -319,8 +326,7 @@ export function makeEnv(opts) {
     context.MediaRecorder = f.MediaRecorder;
     context.Blob = Blob;
   }
-  const webaudio = { contexts: 0, played: [], playing: 0, maxPlaying: 0, decodes: 0 };
-  if (opts.webaudio) context.AudioContext = fakeWebAudio(opts, webaudio, fakeSetTimeout, fakeClearTimeout);
+  if (opts.webaudio) context.AudioContext = fakeWebAudio(opts, webaudio, fakeSetTimeout, fakeClearTimeout, () => { if (sounding() > 0) speech.overlaps++; });
   if (opts.idb && opts.idb.mode !== 'missing') context.indexedDB = fakeIndexedDB(opts.idb);
   context.window = context;
   context.__BPP_TEST = true;

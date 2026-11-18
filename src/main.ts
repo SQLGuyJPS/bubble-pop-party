@@ -6,6 +6,7 @@ import { forgetFontSize, initCanvas, resize } from './draw';
 import { handlePointer, onPlay, pauseGame, resumeGame } from './game';
 import { wireParent } from './parent';
 import { loadSavedList } from './recordings';
+import { appHidden } from './recscreen';
 import { loadSettings } from './settings';
 import { audioCtx, decodeOwnClips, ensureAudio, setMuted } from './sound';
 import { initSpeech, say } from './speech';
@@ -48,9 +49,9 @@ if (window.visualViewport && window.visualViewport.addEventListener) {
   window.visualViewport.addEventListener('resize', resize);
 }
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) pauseGame(); else resumeGame();
+  if (document.hidden) { appHidden(); pauseGame(); } else resumeGame();
 });
-window.addEventListener('pagehide', pauseGame);
+window.addEventListener('pagehide', () => { appHidden(); pauseGame(); });
 
 /* Block zoom, selection, scrolling, pull-to-refresh and menus.
    iOS Safari ignores user-scalable=no, so also stop its gesture events. */
@@ -58,7 +59,7 @@ const block = (e: Event): void => { e.preventDefault(); };
 for (const n of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(n, block, { passive: false });
 document.addEventListener('touchmove', (e) => {
   const t = e.target as Element | null;
-  if (t && t.closest && t.closest('#panel')) return;   // the parent settings list is the one thing that may scroll
+  if (t && t.closest && t.closest('#panel, #recPanel')) return;   // the parent's settings and recordings lists may scroll
   e.preventDefault();
 }, { passive: false });
 document.addEventListener('touchstart', (e) => { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive: false });

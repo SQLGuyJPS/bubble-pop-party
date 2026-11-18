@@ -2,6 +2,7 @@
 import { GATE_HOLD_MS, GATE_IDLE_MS } from './config';
 import { els } from './dom';
 import { pauseGame, resetBubbles, resumeGame, startNewSession } from './game';
+import { closeRecordings, summaryText, wireRecordings } from './recscreen';
 import { sanitizeSettings, saveSettings } from './settings';
 import { applyVolume, decodeOwnClips, ensureAudio, setMuted } from './sound';
 import { BAD_VOICES, getVoices, hasSpeech, say, stopSpeech } from './speech';
@@ -217,12 +218,14 @@ export function openSettings(): void {
   buildChips();
   populateVoices();
   renderSettings();
+  els.recSummary.textContent = summaryText();
   els.settings.classList.remove('hidden');
   els.panel.scrollTop = 0;
 }
 
 export function closeSettings(): void {
   if (!settingsOpen) return;
+  closeRecordings();                                     // stops playback and cancels a take still recording
   settingsOpen = false;
   els.settings.classList.add('hidden');
   saveSettings();
@@ -264,6 +267,7 @@ export function wireParent(): void {
   els.voiceSel.addEventListener('change', () => { doAction('voice', els.voiceSel.value); });
   els.hearBtn.addEventListener('pointerup', (e) => { e.preventDefault(); hearVoice(); });
   els.doneBtn.addEventListener('pointerup', (e) => { e.preventDefault(); closeSettings(); });
+  wireRecordings({ settingsOpen: () => settingsOpen, idle: closeSettings, back: closeRecordings, extra: () => '', act: () => false });
   if (hasSpeech()) {
     try { speechSynthesis.addEventListener('voiceschanged', () => { if (settingsOpen) populateVoices(); }); } catch { /* ignore */ }
   }

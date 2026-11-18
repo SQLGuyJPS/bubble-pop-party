@@ -17,6 +17,9 @@ import { AUDIO_OVERRIDES, own, sourceFor } from './recordings';
 import { sanitizeSettings } from './settings';
 import { ensureAudio, setMuted } from './sound';
 import { cancelTake, mic, releaseMic, startTake, stopTake, type TakeResult } from './mic';
+import {
+  REC_IDLE_MS, appHidden, closeRecordings, counts, openRecordings, recAction, rowButtons, rowState, rs, summaryText
+} from './recscreen';
 import { say, sayLog } from './speech';
 import { state } from './state';
 import { readAll, storeStatus, writeClips, type ClipRecord } from './store';
@@ -117,7 +120,16 @@ export function installDebug(): void {
         const r = await readAll();
         return { good: [...r.records.keys()].sort(), damaged: [...r.damaged].sort() };
       },
-      write: (recs: ClipRecord[], remove?: string[]) => writeClips(recs, remove)
+      write: (recs: ClipRecord[], remove?: string[]) => writeClips(recs, remove),
+      ui: {
+        open: openRecordings, close: closeRecordings, act: recAction, hidden: appHidden, idleMs: REC_IDLE_MS,
+        model: () => ({
+          open: rs.open, loaded: rs.loaded, busy: rs.busy, take: rs.take ? { ...rs.take } : null, confirm: rs.confirm,
+          rowNote: rs.rowNote, notice: rs.notice, kept: rs.kept, showAll: rs.showAll, counts: counts(), summary: summaryText(),
+          html: els.recBody.innerHTML, takeShown: els.takeWords.textContent, takeStatus: els.takeStatus.textContent,
+          row: (name: string) => ({ state: rowState(name), buttons: rowButtons(name) })
+        })
+      }
     },
     setMuted,
     mic: {
