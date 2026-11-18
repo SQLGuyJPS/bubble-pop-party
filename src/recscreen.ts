@@ -55,6 +55,7 @@ let idleTimer: ReturnType<typeof setTimeout> | 0 = 0;
 let onIdle: () => void = () => {};
 let isSettingsOpen: () => boolean = () => false;
 let afterRender: () => string = () => '';      // the backup section, added by backup.ts
+let onOpen: () => void = () => {};
 
 /* ---- What each row shows ---- */
 export type RowState = 'own' | 'damaged' | 'words' | 'file' | 'voice';
@@ -188,6 +189,7 @@ export function openRecordings(): void {
   rs.open = true;
   rs.loaded = false;
   rs.confirm = null; rs.rowNote = null; rs.notice = '';
+  onOpen();
   els.panel.classList.add('hidden');
   els.recPanel.classList.remove('hidden');
   els.recPanel.scrollTop = 0;
@@ -331,11 +333,14 @@ export function recAction(act: string, clip = ''): void {
   render();
 }
 
-/* Connects the screen's buttons. extra() draws the backup section (backup.ts). */
-export function wireRecordings(opts: { settingsOpen: () => boolean; idle: () => void; back: () => void; extra: () => string; act: (a: string) => boolean }): void {
+/* Connects the screen's buttons. extra(), act() and opened() are the backup section's (backup.ts). */
+export function wireRecordings(opts: {
+  settingsOpen: () => boolean; idle: () => void; back: () => void; extra: () => string; act: (a: string) => boolean; opened: () => void;
+}): void {
   isSettingsOpen = opts.settingsOpen;
   onIdle = opts.idle;
   afterRender = opts.extra;
+  onOpen = opts.opened;
   els.recOpen.addEventListener('pointerup', (e) => { e.preventDefault(); openRecordings(); });
   els.recBack.addEventListener('pointerup', (e) => { e.preventDefault(); opts.back(); });
   els.takeStop.addEventListener('pointerup', (e) => { e.preventDefault(); touched(); stopTake(); });

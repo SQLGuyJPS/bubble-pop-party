@@ -5,6 +5,7 @@ import {
   MAX_BUBBLES, MAX_PARTICLES, MIN_CATCH_SECONDS, PROMPT_REPEAT_SECONDS, SPAWN_DEPTH, SVG_LIMIT_MOVING, SVG_LIMIT_TOTAL,
   type Settings
 } from './config';
+import { backupAction, lastBackup, loadBytes } from './backup';
 import { els } from './dom';
 import { capHeight, forgetFontSize, isGlowing, layout } from './draw';
 import { handlePointer, pauseGame, resumeGame, startGame, step } from './game';
@@ -122,7 +123,8 @@ export function installDebug(): void {
       },
       write: (recs: ClipRecord[], remove?: string[]) => writeClips(recs, remove),
       ui: {
-        open: openRecordings, close: closeRecordings, act: recAction, hidden: appHidden, idleMs: REC_IDLE_MS,
+        open: openRecordings, close: closeRecordings, act: (a: string, clip?: string) => { if (!backupAction(a)) recAction(a, clip); },
+        loadBytes, lastBackup, hidden: appHidden, idleMs: REC_IDLE_MS,
         model: () => ({
           open: rs.open, loaded: rs.loaded, busy: rs.busy, take: rs.take ? { ...rs.take } : null, confirm: rs.confirm,
           rowNote: rs.rowNote, notice: rs.notice, kept: rs.kept, showAll: rs.showAll, counts: counts(), summary: summaryText(),

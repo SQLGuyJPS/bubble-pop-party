@@ -2,6 +2,7 @@
 import { GATE_HOLD_MS, GATE_IDLE_MS } from './config';
 import { els } from './dom';
 import { pauseGame, resetBubbles, resumeGame, startNewSession } from './game';
+import { backupAction, backupHtml, resetBackup, wireBackup } from './backup';
 import { closeRecordings, summaryText, wireRecordings } from './recscreen';
 import { sanitizeSettings, saveSettings } from './settings';
 import { applyVolume, decodeOwnClips, ensureAudio, setMuted } from './sound';
@@ -267,7 +268,10 @@ export function wireParent(): void {
   els.voiceSel.addEventListener('change', () => { doAction('voice', els.voiceSel.value); });
   els.hearBtn.addEventListener('pointerup', (e) => { e.preventDefault(); hearVoice(); });
   els.doneBtn.addEventListener('pointerup', (e) => { e.preventDefault(); closeSettings(); });
-  wireRecordings({ settingsOpen: () => settingsOpen, idle: closeSettings, back: closeRecordings, extra: () => '', act: () => false });
+  wireRecordings({
+    settingsOpen: () => settingsOpen, idle: closeSettings, back: closeRecordings, extra: backupHtml, act: backupAction, opened: resetBackup
+  });
+  wireBackup();
   if (hasSpeech()) {
     try { speechSynthesis.addEventListener('voiceschanged', () => { if (settingsOpen) populateVoices(); }); } catch { /* ignore */ }
   }

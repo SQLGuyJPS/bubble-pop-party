@@ -11,8 +11,9 @@ import limits from './limits.mjs';
 import banner from './banner.mjs';
 import recordings from './recordings.mjs';
 import recscreen from './recscreen.mjs';
+import backup from './backup.mjs';
 
-for (const area of [gameplay, speech, parent, install, targets, banner, recordings, recscreen, limits]) await area();
+for (const area of [gameplay, speech, parent, install, targets, banner, recordings, recscreen, backup, limits]) await area();
 
 console.log(`\n${stats.games} simulated games, ${stats.failures} problems found.`);
 process.exit(stats.failures ? 1 : 0);

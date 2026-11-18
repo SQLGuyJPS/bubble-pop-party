@@ -326,6 +326,20 @@ export function makeEnv(opts) {
     context.MediaRecorder = f.MediaRecorder;
     context.Blob = Blob;
   }
+  // sharing a file: opts.share 'ok' (the share sheet; the file lands in `shared`), 'cancel', or 'none' (downloads)
+  const shared = [], downloads = [];
+  if (opts.share) {
+    Object.assign(context, { File, Blob, URL, TextEncoder, TextDecoder, DecompressionStream });
+    if (opts.share !== 'none') {
+      context.navigator.canShare = (d) => !!(d && d.files && d.files.every((f) => f instanceof File));
+      context.navigator.share = (d) => {
+        if (opts.share === 'cancel') { const e = new Error('cancelled'); e.name = 'AbortError'; return Promise.reject(e); }
+        shared.push(...d.files);
+        return Promise.resolve();
+      };
+    }
+    document.createElement = () => { const a = makeEl(); a.click = () => { downloads.push({ name: a.download, href: a.href }); }; return a; };
+  }
   if (opts.webaudio) context.AudioContext = fakeWebAudio(opts, webaudio, fakeSetTimeout, fakeClearTimeout, () => { if (sounding() > 0) speech.overlaps++; });
   if (opts.idb && opts.idb.mode !== 'missing') context.indexedDB = fakeIndexedDB(opts.idb);
   context.window = context;
@@ -334,7 +348,7 @@ export function makeEnv(opts) {
   vm.createContext(context);
   vm.runInContext('Math.random = __rand;', Object.assign(context, { __rand: opts.rand }));
   vm.runInContext(code, context);
-  return { bpp: context.__bpp, advance, speech, audio, webaudio, mic, elements, context };
+  return { bpp: context.__bpp, advance, speech, audio, webaudio, mic, shared, downloads, elements, context };
 }
 
 // ---------- helpers for the feature checks ----------

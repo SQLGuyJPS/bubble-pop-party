@@ -94,6 +94,18 @@ export function ownChanged(name: string, buffer: AudioBuffer | null): void {
   else { own.saved.delete(name); delete own.buffers[name]; }
 }
 
+/* Recordings loaded from a backup file: decode them again from storage. */
+export function ownReloaded(names: string[]): void {
+  for (const n of names) {
+    ownGeneration[n] = (ownGeneration[n] ?? 0) + 1;
+    ownLoading.delete(n);
+    delete own.problems[n];
+    delete own.buffers[n];
+    own.saved.add(n);
+  }
+  decodeOwnClips();
+}
+
 export function applyVolume(): void {
   if (master) master.gain.value = state.muted ? 0 : state.settings.volume;
 }

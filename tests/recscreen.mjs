@@ -9,8 +9,9 @@ const SILENT = 1, QUIET = 2;
 const decode = (b) => (b[0] === SILENT ? takeSignal({ amp: 0 }) : b[0] === QUIET ? takeSignal({ amp: 0.006, noise: 0.00001 }) : takeSignal());
 
 // A game on the iPhone with the Recordings screen open. Pass { idb, mic } to change the device.
-export async function recScreen({ idb = newIDB(), mic = {}, settings = {}, gate = true, audio = 'ok' } = {}) {
-  const env = freshGame(settings, { idb, mic, webaudio: true, audio, decode });
+export async function recScreen({ idb = newIDB(), mic = {}, settings = {}, gate = true, audio = 'ok', share } = {}) {
+  const env = freshGame(settings, { idb, mic, webaudio: true, audio, decode, share });
+  env.idb = idb;
   await flush();
   env.bpp.unlockAudio();
   if (gate) passGate(env);

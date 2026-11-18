@@ -8,7 +8,8 @@ const IDS = {
   numberChips: 'numberChips', letterGroup: 'letterGroup', numberGroup: 'numberGroup', voiceGroup: 'voiceGroup',
   voiceSel: 'voiceSel', hearBtn: 'hearBtn', doneBtn: 'doneBtn', versionNote: 'versionNote', bye: 'bye',
   recSummary: 'recSummary', recOpen: 'recOpen', recPanel: 'recPanel', recBack: 'recBack', recBody: 'recBody',
-  recTake: 'recTake', takeWords: 'takeWords', takeRing: 'takeRing', takeStatus: 'takeStatus', takeStop: 'takeStop'
+  recTake: 'recTake', takeWords: 'takeWords', takeRing: 'takeRing', takeStatus: 'takeStatus', takeStop: 'takeStop',
+  recFile: 'recFile'
 } as const;
 
 type Elements = { [K in keyof typeof IDS]: HTMLElement } & { canvas: HTMLCanvasElement; voiceSel: HTMLSelectElement };
