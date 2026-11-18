@@ -55,6 +55,14 @@ export default async function () {
       const back = m.readZip(zip);
       expect(back && back.length === 2 && back[0].name === 'recording.m4a' && Buffer.from(back[0].data).equals(Buffer.from(audio)) &&
         new TextDecoder().decode(back[1].data) === '{"device":"iPhone"}', 'mictest: a recording in a .zip does not come back the same');
+      {
+        // what other zip readers (the Files app, a computer) go by: the closing record at the end of the file says
+        // where the list of files starts and how long it is, and the list must end exactly where that record starts
+        const v = new DataView(zip.buffer, zip.byteOffset, zip.byteLength), end = zip.length - 22;
+        const size = v.getUint32(end + 12, true), at = v.getUint32(end + 16, true);
+        expect(v.getUint32(end, true) === 0x06054b50 && v.getUint32(at, true) === 0x02014b50 && at + size === end,
+          'mictest: the .zip\'s closing record gives the wrong size for its list of files (other zip readers call it damaged)');
+      }
       const damaged = zip.slice(); damaged[100] ^= 1;
       expect(m.readZip(damaged) === null && m.readZip(new Uint8Array(10)) === null, 'mictest: a damaged or wrong file must be refused, not played');
       expect(Buffer.from(m.fromBase64(m.toBase64(audio))).equals(Buffer.from(audio)), 'mictest: the kept recording does not come back the same');

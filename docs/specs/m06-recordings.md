@@ -266,7 +266,8 @@ README.txt              two sentences: what this file is, and that it loads in t
 - Entries are stored without compression (AAC doesn't compress), so writing it needs only a small ZIP writer
   (`src/bundle.ts`, about 150 lines, no library). Reading also accepts compressed entries (Safari's
   `DecompressionStream`), in case a computer re-zips the file.
-- A parent can open the ZIP on a computer and get ordinary `.m4a` files named like `audio/` files.
+- A parent can open the ZIP on a computer and get ordinary `.m4a` files named like `audio/` files. The closing
+  record must give the right size and position of the list of files (the mic test page got this wrong at first).
 
 **Load recordings from a file** opens the file picker. The game then:
 
@@ -402,9 +403,16 @@ stopping on silence; the README warns that the microphone prompt comes back each
 
 - **The iPad side of step 8** (load the iPhone's recording in Mic test on the iPad and play it) and steps 1 and 7 on
   the iPad: waiting for the iPad's Results screenshot. The "too quiet" line above was played on the iPhone.
-- **Too quiet:** expected for a raw take with automatic volume off (tests B to D). Levelling (section 7) raises speech
-  to −18 dBFS with at most ×10. Whether ×10 is enough is checked by measuring the take itself (send
-  "Mic test recording.zip").
+- **Too quiet (measured, settled):** the take sent from the iPhone (`Mic test recording.zip`, 18 Nov 11:45, AAC,
+  48000 Hz, **2 channels**, 2.7 s) was measured with the section 7 rules. Background noise −70 dBFS; speech found from
+  0.42 to 1.96 s (the whole sentence, nothing cut off at the start); speech loudness **−34.8 dBFS**; loudest peak
+  −21.1 dBFS. Reaching −18 dBFS needs **+16.8 dB (×6.9)**, inside the ×10 cap, and the peak then sits at −4.3 dBFS,
+  under the −1 dBFS limit. Noise rises to about −53 dBFS, still quiet. So "too quiet" was the raw take, and
+  levelling as planned fixes it, with about 3 dB to spare before the "very quiet" note. Takes are decoded and mixed
+  to one channel before trimming and levelling.
+- **The test page's .zip was slightly malformed:** its closing record gave the list of files as 12 bytes too long.
+  The page's own reader didn't look at it, but standard zip tools call the file damaged. Fixed in the test page, with
+  a check. The game's backup file (section 8) gets the same check.
 - **Short takes (explained):** each take was meant to be 4 seconds but decoded to 2.3 and 2.6 seconds. The iPhone
   asks for the microphone each time the app opens fresh, and the test page's on-screen countdown started at the tap,
   while the parent was still answering that question. The recorder itself ran from when the microphone started, so
@@ -461,7 +469,8 @@ New area `tests/recordings.mjs`:
 - **Trimming and levelling:** made-up signals: silence, then a tone, then silence, is trimmed to within one window; a
   short click at the start is ignored; a quiet take is raised to the target; a loud take is turned down to the peak
   cap; a take of only noise is "didn't hear anything"; the gain never goes over the cap.
-- **Backup:** save then load gives back identical records; a damaged ZIP, the wrong format, a too-new version, too
+- **Backup:** save then load gives back identical records; the file's closing record matches its list of files, as
+  other zip readers expect; a damaged ZIP, the wrong format, a too-new version, too
   big, unknown clip names and undecodable audio are handled as section 8 says; both merge choices; a failure halfway
   changes nothing.
 - **Offline:** `mictest/` isn't in the offline list; the offline helper never stores anything while running, so in-app
@@ -510,7 +519,7 @@ Each step is its own commit, and all checks pass from step 3 on.
 - [ ] `npm test` ends with `0 problems found`, on your computer and in GitHub Actions.
 - [ ] The spoken-lines sample is unchanged.
 - [ ] No file in `src/` is over about 400 lines.
-- [ ] The microphone test results are in this spec (iPhone: done; iPad: waiting), and the game uses what they showed.
+- [ ] The microphone test results are in this spec (iPhone: done, recording measured; iPad: waiting), and the game uses what they showed.
 - [ ] On the iPhone, **from the home-screen icon**: record a few clips, including the first take after opening the
       app (the microphone question doesn't shorten it); the pops and the computer voice are **as loud as before and
       from the speakers**, also after several takes; the mic dot goes away after each take.
