@@ -20,6 +20,8 @@ const wantAll = args.includes('--all');
 const chosen = wantAll ? list.allClips() : list.clipsFor({ ...list.DEFAULTS, mode: 'both' });
 const items = [...new Set(chosen.filter((c) => c.item).map((c) => c.item))];
 
+// --script prints the words and stops. No process.exit(): it can quit before printing has finished when the output
+// goes to another program (the checks), cutting the list short.
 if (args.includes('--script')) {
   console.log('Words to record (one file each). Say the LETTER NAME, like "bee", "see", "ay" (rhymes with "say").\n');
   let group = '';
@@ -28,18 +30,17 @@ if (args.includes('--script')) {
     console.log(`  ${c.file.padEnd(10)}  "${c.script}"`);
     console.log(`  ${''.padEnd(10)}  plays: ${c.when}`);
   }
-  process.exit(0);
-}
-
-// ----- look at the audio folder -----
-const { clips, problems } = findRecordings(root);
-console.log(`Found ${Object.keys(clips).length} recording(s) in audio/ that the game will use.\n`);
-const missing = chosen.filter((c) => !clips[c.name]).map((c) => c.file);
-if (missing.length) {
-  console.log('Still using the computer voice for:');
-  console.log('  ' + missing.join(', '));
-  console.log('(That is fine. Any clip you have not recorded falls back to the computer voice.)');
 } else {
-  console.log(`Every clip for ${items.join(' ')} is recorded.`);
+  // ----- look at the audio folder -----
+  const { clips, problems } = findRecordings(root);
+  console.log(`Found ${Object.keys(clips).length} recording(s) in audio/ that the game will use.\n`);
+  const missing = chosen.filter((c) => !clips[c.name]).map((c) => c.file);
+  if (missing.length) {
+    console.log('Still using the computer voice for:');
+    console.log('  ' + missing.join(', '));
+    console.log('(That is fine. Any clip you have not recorded falls back to the computer voice.)');
+  } else {
+    console.log(`Every clip for ${items.join(' ')} is recorded.`);
+  }
+  if (problems.length) { console.log('\nCheck these:'); problems.forEach((p) => console.log('  - ' + p)); }
 }
-if (problems.length) { console.log('\nCheck these:'); problems.forEach((p) => console.log('  - ' + p)); }
