@@ -5,8 +5,7 @@ character. The game shows and says which one to find, and the child pops it.
 
 Written in TypeScript with no frameworks. No network calls, no tracking, no ads.
 
-> Status: **Milestone 5** (TypeScript, split into files, automatic publishing). See `docs/ROADMAP.md` for what comes
-> next.
+> Status: **Milestone 6** in progress (record clips inside the game). See `docs/ROADMAP.md` for what comes next.
 
 ## Run it on your computer
 
@@ -65,6 +64,7 @@ Settings (saved on the device; if the browser blocks saving, the game just uses 
 | Hint sparkles | Auto, Always, Off |
 | Computer voice | Pick a voice and press "Hear it" (it says "Great!", a short pause, then "eigh is for apple.") |
 | Play time | No limit, 5, 10 or 15 minutes |
+| Recordings | Shows how many lines are in your voice. **Open recordings** records your own voice (see "Recording in the game") |
 
 When the play time is up she sees a friendly goodbye screen and the game stops. Starting again needs the
 parent gate, and then pressing Done in settings begins a new session (stars start over).
@@ -76,10 +76,71 @@ Hide by default in Milestone 5, but an iPad that had saved Show keeps showing th
 The word under the picture is written like the letter on the bubble to find: if the bubble shows **A**, the word is
 **APPLE**; if it shows **a**, the word is **apple**. With "both", it changes from letter to letter.
 
-## Your own voice recordings
+## Recording in the game
 
-The computer voice can sound rushed or unclear. Record your own clips and the game uses them instead.
-See **[AUDIO-GUIDE.md](AUDIO-GUIDE.md)** for the words to say and the file names.
+The computer voice can sound rushed or unclear. You can record each line in your own voice, inside the game, and the
+game plays yours instead. Record on the **iPhone** (better microphone, and it's at hand), then move the recordings to
+the **iPad** in one file. Recordings stay on your devices only: they never go online and never into the repository.
+Any line you haven't recorded keeps using the computer voice, so you can start with one letter.
+
+### Record on the iPhone
+
+1. On the iPhone, open **Safari**, go to the game's address, tap **Share**, then **Add to Home Screen**, then **Add**
+   (the same as on the iPad, see "One-time setup" below).
+2. Open the game from its **icon**. Tap the gear, hold the big button for 3 seconds, and answer the sum.
+3. At the bottom of Settings, tap **Open recordings**.
+4. Find a line and tap **Record**. **The first time you tap Record after opening the game, the iPhone asks to use
+   the microphone. Tap Allow. This is normal:** it asks again each time you open the game.
+5. When the red dot shows, say the words on the screen. Tap **Stop** when you've finished (it also stops by itself
+   after 6 seconds).
+6. The game cuts off the silence, evens out the volume, saves it and plays it back once. The line now says
+   **Your voice**. Not happy with it? Tap **Re-record**. The old take is only replaced once the new one is saved.
+
+Tips: say the letter **name** ("bee"), not its sound ("buh"). Sound happy and go slowly. Use a quiet room and hold
+the phone about a hand's width from your mouth. Turn off silent mode so you hear the take played back.
+
+Each line shows where the game gets it from: **Your voice**, **Audio file** (a file in `audio/`, see
+AUDIO-GUIDE.md) or **Computer voice**. The list shows the letters and numbers you play; **Show every letter and
+number** shows all of them. **Play** lets you hear what the game would play now. **Delete** asks first; **Delete all
+recordings** is at the bottom.
+
+### Move them to the iPad
+
+1. On the iPhone, in Recordings, under **Backup**, tap **Save recordings to a file**. The share sheet opens: tap
+   **AirDrop** and choose the iPad.
+2. On the iPad, open the game from its icon, pass the gate, then **Settings**, **Open recordings**, **Load recordings
+   from a file**. Pick **Bubble Pop recordings** (with the date) from **Downloads** in the file picker.
+3. If some lines are already recorded on the iPad, the game asks: **Replace those**, **Keep mine, add only the new
+   ones**, or **Cancel**.
+4. It says how many it loaded. Tap **Back to settings**, then **Done**. She now hears your voice.
+
+### Keep a backup
+
+- Now and then, tap **Save recordings to a file** and choose **Save to Files** (for example iCloud Drive). The
+  Recordings screen shows **Kept safe from automatic clearing: Yes** when the iPad has agreed to keep them, or **No**
+  when Safari might clear them some day; then a backup is even more important.
+- **Removing the game's icon deletes its recordings.** Save a backup file first, add the game again, then **Load
+  recordings from a file**.
+- A recordings file is a normal `.zip`. On a computer it opens to ordinary `.m4a` files named like the files in
+  `audio/` (`prompt-B.m4a`...). Copying them into `audio/` makes them part of the game, and **public** (see
+  AUDIO-GUIDE.md).
+
+### If something goes wrong
+
+- **"The game needs the microphone to record."** The microphone was refused. On the iPhone: **Settings** app,
+  **Apps**, **Safari**, **Microphone**, then **Allow**. Then close the game fully and open it again.
+- **"You're in Safari."** The game is open in a Safari tab, not from its icon. The home-screen game and Safari keep
+  separate recordings, so record from the icon.
+- **"This device isn't letting the game save recordings."** Usually Safari's Private Browsing. Use the home-screen
+  icon. The game itself still plays as normal.
+- **"I didn't hear anything"** or **"That was very quiet"**: try again closer to the phone. A very quiet take is
+  still saved.
+- **"There's no room to save this recording."** The device is full. Save a backup file, then free up some space.
+- **"Recording stopped. Try again."** A call, Siri or switching apps stopped the take. Your old recording is kept.
+- The Recordings screen goes back to the game by itself after 3 minutes without a tap.
+
+The other way to use your own voice, files in the `audio/` folder published with the game, is in
+**[AUDIO-GUIDE.md](AUDIO-GUIDE.md)**.
 
 ## Check the game's rules automatically
 
@@ -93,7 +154,10 @@ never a bubble that has just arrived or is about to float away, there are never 
 duplicates or look-alike characters (b/d, p/q, m/w, n/u, 6/9, O/0, I/l/1) together, the same target never repeats
 straight away, wrong pops never change the target, the voice never queues more than one line, hints and repeat
 prompts happen on time, confetti stays under 60 pieces, missed letters come up more, mute is silent, recordings play
-one at a time with a fallback to the computer voice, the parent gate needs a full 3-second hold and the right sum,
+one at a time with a fallback to the computer voice, recordings made in the game play first (then files in `audio/`,
+then the computer voice), the game runs when storage is blocked or full, the microphone is always let go and the
+6-second limit only counts once recording has started, a failed take keeps the old one, trimming and levelling work,
+and the backup file loads back identically (also in other zip tools), the parent gate needs a full 3-second hold and the right sum,
 settings are remembered (and survive blocked or damaged storage), the play-time limit ends the session until a
 parent restarts it, and the word at the top matches the bubble's capital or small letter. It also checks that the
 voice says exactly what it said before (`tests/fixtures/spoken-sample.txt`), that the icons are the right size, that
@@ -108,7 +172,8 @@ The same checks run on GitHub for every push and pull request.
 | File | What it is |
 | --- | --- |
 | `index.html` | The page: buttons, banner, parent screens (no code) |
-| `src/` | The game's code in TypeScript, one file per area (settings, letters, speech, sound, drawing...), and `styles.css` |
+| `src/` | The game's code in TypeScript, one file per area (settings, letters, speech, sound, drawing, recordings...), and `styles.css` |
+| `src/clips.ts` | The list of every spoken line: its words, its file name and when it plays |
 | `src/sw.ts` | The offline helper (see "How the offline copy works") |
 | `manifest.webmanifest` | Tells the iPad the game's name, icon and colors |
 | `icons/` | The app icons (180, 192 and 512 pixels) |
@@ -117,7 +182,7 @@ The same checks run on GitHub for every push and pull request.
 | `perf/` | The speed test page (see "Speed test") |
 | `mictest/` | The microphone test page, for Milestone 6 only (see "Microphone test") |
 | `tools/build.mjs` | Builds the game into `dist/` (`npm run build`; `npm run dev` also serves it) |
-| `tools/update-audio.mjs` | Lists which recordings you have, and the words to record |
+| `tools/update-audio.mjs` | Lists which files you have in `audio/`, and the words to record |
 | `tools/make-icons.mjs` | Draws the icon PNGs |
 | `tests/` | The automatic rules check (`npm test`), one file per area |
 | `.github/workflows/deploy.yml` | Runs the checks on GitHub, and publishes the game when `main` changes |
@@ -179,10 +244,12 @@ To check which version the iPad has: pass the parent gate, open Settings, and lo
 ### If the iPad still shows the old version
 
 1. Open the game once on Wi-Fi, close it completely, and open it again. (Two rounds is sometimes needed.)
-2. Still old? Delete the Bubble Pop icon (hold the icon, **Remove App**), open Safari, go to the address
-   again and **Add to Home Screen** again. This always gives a clean, newest copy.
+2. Still old? First **save your recordings to a file** (see "Keep a backup"), because removing the icon deletes
+   them. Then delete the Bubble Pop icon (hold the icon, **Remove App**), open Safari, go to the address again and
+   **Add to Home Screen** again. This always gives a clean, newest copy. Load your recordings file again.
 3. Last resort: iPad **Settings, then Apps, then Safari, then Clear History and Website Data**. This logs you out
-   of websites on that iPad, so try 1 and 2 first.
+   of websites on that iPad and also deletes recordings made in the game, so save a recordings file and try 1 and 2
+   first.
 
 ### Good to know
 
@@ -213,11 +280,10 @@ in `tests/limits.mjs`.
 
 ## Microphone test
 
-Before the game gets its own Recordings screen (Milestone 6), the page
-<https://sqlguyjps.github.io/bubble-pop-party/mictest/> checks that the iPhone you record on can record from a
-home-screen icon without its sounds getting quieter afterwards, and that a recording made on the iPhone plays on the
-iPad. It is not linked from the game and not saved for offline use, and it will be deleted when Milestone 6 is
-finished.
+The page <https://sqlguyjps.github.io/bubble-pop-party/mictest/> was used to decide how the game records (its
+results are in `docs/specs/m06-recordings.md`): that the iPhone can record from a home-screen icon without its sounds
+getting quieter afterwards, and that a recording made on the iPhone plays on the iPad. It is not linked from the game
+and not saved for offline use, and it will be deleted when Milestone 6 is finished.
 
 1. Open the page in Safari on the iPhone.
 2. Tap the Share button, then **Add to Home Screen**, then **Add**. A new icon called **Mic test** appears (a pink
@@ -239,12 +305,13 @@ step 8. Nothing is sent anywhere by the page.
 ## How the offline copy works
 
 The offline helper (`src/sw.ts`, published as `sw.js`) is a small program the browser runs in the background. It
-saves every file of the game (the page, its script and styles, the font, the icons and your recordings) under a
+saves every file of the game (the page, its script and styles, the font, the icons and the files in `audio/`) under a
 version name, and from then on serves the game from those saved files. The build lists the files and makes the
 version name from their contents, so a change to any file means a new version, and the old saved copy is deleted once
 the new one is ready. It is always published as `sw.js` next to `index.html`, because the iPad only updates an
 installed helper from the same address. Everything uses relative paths, because GitHub Pages serves the game from a
-sub-folder (`/bubble-pop-party/`).
+sub-folder (`/bubble-pop-party/`). Recordings made in the game are not part of it: they are kept in the browser's
+storage on that device (IndexedDB), and the offline helper never stores anything while the game runs.
 
 Icons are drawn by `node tools/make-icons.mjs` (nothing to install). You only need that if you want to change the
 icon's look.

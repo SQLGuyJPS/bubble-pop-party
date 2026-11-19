@@ -179,6 +179,16 @@ export default async function () {
       post.listeners.fetch({ request: new post.Req('https://x.test/game/', { method: 'POST' }), respondWith: () => { responded = true; } });
       expect(!responded, 'the worker answered a non-GET request');
 
+      // while the game runs, the worker never stores anything: recordings made in the game can't end up in it
+      fakeNet.up = true;
+      const count = () => [...sw.stores.values()].reduce((n, st) => n + st.size, 0);
+      const stored = count();
+      for (const u of ['index.html', 'audio/prompt-Z.m4a', 'mictest/index.html', 'Bubble%20Pop%20recordings.zip', 'game.js?x=1']) {
+        await sw.run('fetch', { request: new sw.Req('https://x.test/game/' + u) });
+      }
+      await sw.run('fetch', { request: new sw.Req('https://x.test/game/elsewhere', { mode: 'navigate' }) });
+      expect(count() === stored && sw.stores.size === 1, 'the offline helper stored something while the game was running');
+
       // a failed download must not leave a half-saved game behind as the active copy
       fakeNet.up = true; fakeNet.missing.add('icons/icon-512.png');
       const bad = swEnv();

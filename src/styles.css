@@ -1,4 +1,6 @@
-/* Bubble Pop Party styles. Built into game.css next to index.html, so the font path is relative to the site. */
+/* Bubble Pop Party styles. Built into game.css next to index.html, so the font path is relative to the site.
+   The Recordings screen's styles are in recscreen.css, built into the same file. */
+@import './recscreen.css';
 @font-face {
   font-family: 'Andika';
   src: url('fonts/Andika-Bold.ttf') format('truetype');

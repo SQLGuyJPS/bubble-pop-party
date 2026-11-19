@@ -446,7 +446,9 @@ New modules (each under about 400 lines):
 | `src/mic.ts` | getUserMedia, MediaRecorder, the length limit, `releaseMic()` |
 | `src/level.ts` | Trimming and levelling on sample arrays (pure) |
 | `src/bundle.ts` | ZIP write and read, `recordings.json` check |
-| `src/recscreen.ts` | The Recordings screen and recording panel |
+| `src/recscreen.ts` | The Recordings screen and recording panel (its styles in `src/recscreen.css`) |
+| `src/backup.ts` | The screen's Backup section: save through the share sheet, load and ask (kept apart so `recscreen.ts` stays under 400 lines) |
+| `tools/clips.mjs` | Loads `src/clips.ts` into Node for the tools and the checks |
 
 Changed: `recordings.ts` (decides the source for each clip: in-app, then `audio/`, then voice), `sound.ts` (decoding
 in-app clips with trim and gain), `speech.ts` (reads the clip list), `parent.ts` (the Recordings section and button),
@@ -460,7 +462,8 @@ Fakes added to `tests/harness.mjs`: an **in-memory IndexedDB** (with switches fo
 answering, quota full, and damaged records), a **fake microphone** (`getUserMedia`, `MediaRecorder`, tracks that know
 whether they're live, and a refusal switch), and a fake `decodeAudioData` that returns a chosen signal.
 
-New area `tests/recordings.mjs`:
+New areas `tests/recordings.mjs` (clip list, storage, playback order, levelling, microphone), `tests/recscreen.mjs` (the screen
+and panel) and `tests/backup.mjs` (the backup file):
 
 - **Clip list:** names are unique; every clip has `script`, `speech` and `when`; the `--script` output lists every
   clip for the chosen items; the build accepts an `audio/` file exactly when its name is in the list; the spoken

@@ -1,10 +1,30 @@
-/* Your own recordings. Files in audio/ with a clip name (prompt-B.m4a, cheer-B.m4a, that-B.m4a, party.m4a,
-   bye.m4a) are found by the build and listed here; they play instead of the computer voice. See AUDIO-GUIDE.md.
-   Clip names that say() uses:
-     prompt:<item>   "Can you find the letter B?"
-     cheer:<item>    "Great!" (short pause) "B is for ball."
-     that:<item>     "That's the letter B."   (used first when a wrong bubble is popped)
-     party           "Hooray! You popped ten bubbles!"
-     bye             "All done! Great playing. Bye bye!"  (when play time is up)
-   A copy, so the tests can add clips. */
+/* Where each clip comes from. In order:
+     1. your recording made in the game (or loaded from a backup file) on this device, if it's usable;
+     2. otherwise a file in audio/ with the clip's name, published with the game (see AUDIO-GUIDE.md);
+     3. otherwise the computer voice.
+   Every clip name, its words and its file name are in the clip list, src/clips.ts. */
+import { savedNames } from './store';
+
+/* Files in audio/ found by the build: clip name -> 'audio/<file>'. A copy, so the tests can add clips. */
 export const AUDIO_OVERRIDES: Record<string, string> = { ...__RECORDINGS__ };
+
+/* Recordings made in the game, on this device. */
+export const own = {
+  saved: new Set<string>(),                       // clips with a saved recording (read at start-up, without the audio)
+  buffers: {} as Record<string, AudioBuffer>,     // decoded, trimmed and levelled: ready to play
+  problems: {} as Record<string, 'damaged' | 'words'>   // saved, but not played (the Recordings screen says why)
+};
+
+/* At start-up: which clips have a recording. The audio itself is read and decoded after the first tap. */
+export async function loadSavedList(): Promise<void> {
+  for (const n of await savedNames()) own.saved.add(n);
+}
+
+export type Source = 'own' | 'file' | 'voice';
+
+/* What plays for a clip right now. A recording that hasn't finished decoding yet uses the next source. */
+export function sourceFor(clip: string): Source {
+  if (own.buffers[clip]) return 'own';
+  if (AUDIO_OVERRIDES[clip]) return 'file';
+  return 'voice';
+}

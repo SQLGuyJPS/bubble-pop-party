@@ -1,35 +1,21 @@
 /* Speech: everything the game says goes through say(clip). A clip is your recording if there is one, otherwise
    the computer voice. Only one spoken line at a time: say() always stops whatever was playing first. */
 import { CHEER_PAUSE_MS } from './config';
-import { info, isItem, isNumber } from './items';
-import { AUDIO_OVERRIDES } from './recordings';
+import { clipByName } from './clips';
+import { AUDIO_OVERRIDES, own } from './recordings';
 import { audioCtx, clipBuffers, master } from './sound';
-import { state, type Key } from './state';
+import { mic } from './mic';
+import { state } from './state';
 
-function nameOf(key: Key): string { return info(key).say; }
-function kindOf(key: Key): string { return isNumber(key) ? 'number' : 'letter'; }
-function anchorText(key: Key): string {
-  return isNumber(key) ? info(key).word : nameOf(key) + ' is for ' + info(key).word;
-}
+/* "Hear it" in Settings plays the tricky letter A's cheer. It isn't a clip and can't be recorded. */
+const VOICETEST = 'cheer:A';
 
 /* The words for one clip, as the computer voice says them. */
-export function textFor(clip: string): string {
-  const [kind = '', key = ''] = String(clip).split(':');
-  if (kind === 'prompt' && isItem(key)) return 'Can you find the ' + kindOf(key) + ' ' + nameOf(key) + '?';
-  if (kind === 'cheer' && isItem(key)) return 'Great! ' + anchorText(key) + '.';
-  if (kind === 'that' && isItem(key)) return "That's the " + kindOf(key) + ' ' + nameOf(key) + '.';
-  if (kind === 'party') return 'Hooray! You popped ten bubbles! Great job!';
-  if (kind === 'bye') return 'All done! Great playing. Bye bye!';
-  if (kind === 'voicetest') return textFor('cheer:A');   // what the parent hears from "Hear it": the tricky letter A
-  return '';
-}
+export function textFor(clip: string): string { return speechPieces(clip).join(' '); }
 
 /* The computer voice says a cheer in two pieces with a short pause between (see CHEER_PAUSE_MS). */
 function speechPieces(clip: string): string[] {
-  const [kind = '', key = ''] = String(clip === 'voicetest' ? 'cheer:A' : clip).split(':');   // "Hear it" plays the tricky letter A
-  if (kind === 'cheer' && isItem(key)) return ['Great!', anchorText(key) + '.'];
-  const t = textFor(clip);
-  return t ? [t] : [];
+  return clipByName(clip === 'voicetest' ? VOICETEST : clip)?.speech ?? [];
 }
 
 /* One spoken moment can be several clips played one after another.
@@ -100,7 +86,25 @@ export function stopSpeech(): void {
   }
 }
 
-/* Plays one clip: your recording if there is one, otherwise the computer voice.
+/* Preferred path for recordings: decoded ahead of time and played through the same Web Audio context as the
+   pops. No download or decode at play time (no freeze), and the browser's audio output is never handed back and
+   forth between an <audio> element and Web Audio. False if it couldn't start. */
+function playBuffer(buffer: AudioBuffer, ended: () => void): boolean {
+  if (!audioCtx || !master) return false;
+  try {
+    if (audioCtx.state !== 'running' && audioCtx.resume) void audioCtx.resume();
+    const bs = audioCtx.createBufferSource();
+    bs.buffer = buffer;
+    bs.connect(master);
+    bs.onended = ended;
+    currentAudio = { pause: () => { bs.onended = null; try { bs.stop(); } catch { /* ignore */ } } };
+    safetyTimer = setTimeout(ended, 15000);
+    bs.start(0);
+    return true;
+  } catch { currentAudio = null; return false; }
+}
+
+/* Plays one clip: a recording if there is one, otherwise the computer voice.
    Calls next() when it finishes (or fails), but only if nothing newer has started. */
 function playClip(clip: string, token: number, next: () => void): void {
   let called = false;
@@ -144,24 +148,10 @@ function playClip(clip: string, token: number, next: () => void): void {
     }
     speakTimer = setTimeout(() => { speakPiece(0); }, 50);   // tiny delay after cancel() so browsers don't swallow the new line
   }
+  /* 1. your recording made in the game, 2. a file in audio/, 3. the computer voice (see recordings.ts) */
   const file = AUDIO_OVERRIDES[clip];
-  const buffer = clipBuffers[clip];
-  if (file && buffer && audioCtx && master) {
-    /* Preferred path: the recording was decoded ahead of time and plays through the same Web Audio
-       context as the pops. No download or decode at play time (no freeze), and the browser's audio
-       output is never handed back and forth between an <audio> element and Web Audio. */
-    try {
-      if (audioCtx.state !== 'running' && audioCtx.resume) void audioCtx.resume();
-      const bs = audioCtx.createBufferSource();
-      bs.buffer = buffer;
-      bs.connect(master);
-      bs.onended = nextOnce;
-      currentAudio = { pause: () => { bs.onended = null; try { bs.stop(); } catch { /* ignore */ } } };
-      safetyTimer = setTimeout(nextOnce, 15000);
-      bs.start(0);
-      return;
-    } catch { currentAudio = null; }
-  }
+  const buffer = own.buffers[clip] ?? (file ? clipBuffers[clip] : undefined);
+  if (buffer && playBuffer(buffer, nextOnce)) return;
   if (file && typeof Audio !== 'undefined') {
     try {
       const a = new Audio(file);
@@ -193,9 +183,18 @@ export function say(clip: string, after?: () => void): void {
     if (part === undefined) { if (after) after(); return; }
     playClip(part, token, () => { playPart(i + 1); });
   }
-  if (state.muted) {               // sound is off: keep the game's rhythm, make no noise
+  if (state.muted || mic.phase !== 'idle') {   // sound is off, or recording: keep the game's rhythm, make no noise
     speakTimer = setTimeout(() => { if (token === speechToken && after) after(); }, 1200);
     return;
   }
   playPart(0);
+}
+
+/* The Recordings screen's Play for one of your recordings (decoded there). Stops whatever was playing first, like
+   say(), and never plays while the microphone is open. */
+export function sayRecording(buffer: AudioBuffer): void {
+  stopSpeech();
+  if (state.muted || mic.phase !== 'idle') return;
+  const token = speechToken;
+  playBuffer(buffer, () => { if (token === speechToken) { clearTimeout(safetyTimer); currentAudio = null; } });
 }

@@ -5,6 +5,7 @@ import {
   MAX_BUBBLES, MAX_PARTICLES, MIN_CATCH_SECONDS, PROMPT_REPEAT_SECONDS, SPAWN_DEPTH, SVG_LIMIT_MOVING, SVG_LIMIT_TOTAL,
   type Settings
 } from './config';
+import { backupAction, lastBackup, loadBytes } from './backup';
 import { els } from './dom';
 import { capHeight, forgetFontSize, isGlowing, layout } from './draw';
 import { handlePointer, pauseGame, resumeGame, startGame, step } from './game';
@@ -13,11 +14,16 @@ import {
   cancelHold, closeGate, closeSettings, doAction, gate, hearVoice, openGate, openSettings, pressKey, settingsOpen,
   startHold
 } from './parent';
-import { AUDIO_OVERRIDES } from './recordings';
+import { AUDIO_OVERRIDES, own, sourceFor } from './recordings';
 import { sanitizeSettings } from './settings';
-import { setMuted } from './sound';
-import { sayLog } from './speech';
+import { ensureAudio, setMuted } from './sound';
+import { cancelTake, mic, releaseMic, startTake, stopTake, type TakeResult } from './mic';
+import {
+  REC_IDLE_MS, appHidden, closeRecordings, counts, openRecordings, recAction, rowButtons, rowState, rs, summaryText
+} from './recscreen';
+import { say, sayLog } from './speech';
 import { state } from './state';
+import { readAll, storeStatus, writeClips, type ClipRecord } from './store';
 import { goneY, isLive, liveTargetBubble, pos, secondsCatchable, sparklesWanted } from './targets';
 
 export function debugWanted(): boolean {
@@ -85,6 +91,7 @@ export function installDebug(): void {
       canvasMix: CANVAS_LIMIT_MIX, canvasMovingOverCached: CANVAS_LIMIT_MOVING_OVER_CACHED
     },
     sayLog,
+    say: (clip: string) => { say(clip); },
     setSettings: (o: Partial<Settings>) => { Object.assign(state.settings, o); },
     state: () => {
       const s = state;
@@ -104,7 +111,39 @@ export function installDebug(): void {
       hear: hearVoice, sanitize: sanitizeSettings
     },
     overrides: AUDIO_OVERRIDES,
+    rec: {
+      status: () => storeStatus,
+      saved: () => [...own.saved].sort(),
+      ready: () => Object.keys(own.buffers).sort(),
+      problems: () => ({ ...own.problems }),
+      source: sourceFor,
+      readAll: async () => {
+        const r = await readAll();
+        return { good: [...r.records.keys()].sort(), damaged: [...r.damaged].sort() };
+      },
+      write: (recs: ClipRecord[], remove?: string[]) => writeClips(recs, remove),
+      ui: {
+        open: openRecordings, close: closeRecordings, act: (a: string, clip?: string) => { if (!backupAction(a)) recAction(a, clip); },
+        loadBytes, lastBackup, hidden: appHidden, idleMs: REC_IDLE_MS,
+        model: () => ({
+          open: rs.open, loaded: rs.loaded, busy: rs.busy, take: rs.take ? { ...rs.take } : null, confirm: rs.confirm,
+          rowNote: rs.rowNote, notice: rs.notice, kept: rs.kept, showAll: rs.showAll, counts: counts(), summary: summaryText(),
+          html: els.recBody.innerHTML, takeShown: els.takeWords.textContent, takeStatus: els.takeStatus.textContent,
+          row: (name: string) => ({ state: rowState(name), buttons: rowButtons(name) })
+        })
+      }
+    },
     setMuted,
+    mic: {
+      phase: () => mic.phase,
+      start: (): { result: TakeResult | null; recordingCalls: number } => {
+        const t = { result: null as TakeResult | null, recordingCalls: 0 };
+        void startTake(() => { t.recordingCalls++; }).then((r) => { t.result = r; });
+        return t;
+      },
+      stop: stopTake, cancel: cancelTake, release: releaseMic
+    },
+    unlockAudio: () => { ensureAudio(); },   // what the first tap does
     quiet: () => { state.lastActivity = state.simTime; state.nextPromptAt = state.simTime + PROMPT_REPEAT_SECONDS; },
     pause: pauseGame,
     resume: resumeGame,

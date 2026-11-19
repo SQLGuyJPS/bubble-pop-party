@@ -2,8 +2,10 @@
 import { GATE_HOLD_MS, GATE_IDLE_MS } from './config';
 import { els } from './dom';
 import { pauseGame, resetBubbles, resumeGame, startNewSession } from './game';
+import { backupAction, backupHtml, resetBackup, wireBackup } from './backup';
+import { closeRecordings, summaryText, wireRecordings } from './recscreen';
 import { sanitizeSettings, saveSettings } from './settings';
-import { applyVolume, ensureAudio, setMuted } from './sound';
+import { applyVolume, decodeOwnClips, ensureAudio, setMuted } from './sound';
 import { BAD_VOICES, getVoices, hasSpeech, say, stopSpeech } from './speech';
 import { state } from './state';
 
@@ -217,16 +219,19 @@ export function openSettings(): void {
   buildChips();
   populateVoices();
   renderSettings();
+  els.recSummary.textContent = summaryText();
   els.settings.classList.remove('hidden');
   els.panel.scrollTop = 0;
 }
 
 export function closeSettings(): void {
   if (!settingsOpen) return;
+  closeRecordings();                                     // stops playback and cancels a take still recording
   settingsOpen = false;
   els.settings.classList.add('hidden');
   saveSettings();
   stopSpeech();
+  decodeOwnClips();                                      // recordings for newly chosen letters and numbers
   state.uiLock = false;
   if (state.ended) { startNewSession(); return; }        // after the goodbye screen, a parent starts a new session
   if (state.running) {
@@ -263,6 +268,10 @@ export function wireParent(): void {
   els.voiceSel.addEventListener('change', () => { doAction('voice', els.voiceSel.value); });
   els.hearBtn.addEventListener('pointerup', (e) => { e.preventDefault(); hearVoice(); });
   els.doneBtn.addEventListener('pointerup', (e) => { e.preventDefault(); closeSettings(); });
+  wireRecordings({
+    settingsOpen: () => settingsOpen, idle: closeSettings, back: closeRecordings, extra: backupHtml, act: backupAction, opened: resetBackup
+  });
+  wireBackup();
   if (hasSpeech()) {
     try { speechSynthesis.addEventListener('voiceschanged', () => { if (settingsOpen) populateVoices(); }); } catch { /* ignore */ }
   }
