@@ -80,6 +80,11 @@ saved its settings. Say so in the pull request and the README.
 the exact command to type. Update them in the same pull request as the behaviour they describe. Mark the milestone in
 `docs/ROADMAP.md` when it's done.
 
+`PLAYTEST.md` lists what to try on the real devices after each pull request is merged, newest first. A pull request
+that changes what the player or the parent sees, hears or does adds its own section there: a bullet list of things to
+try on the iPhone or iPad, in the same plain words. A pull request that only changes docs, plans or checks goes under
+"Nothing to check".
+
 ## Git
 
 One branch and one pull request per milestone (small fixes can have their own). Commit messages say what changed for
