@@ -24,6 +24,12 @@ After any merge, before the pull request's own list:
 - [ ] Turn on Airplane Mode, close the game and open it again: it still plays, with sound.
 - [ ] Settings still open through the gate (hold 3 seconds, then the sum), and your saved settings are still there.
 
+## Pull request #13: A shorter pause before the question
+
+- [ ] Pop the right bubble: after the cheer there's a short pause (now 0.4 seconds) before "Can you find …". It feels
+  natural: not rushed together, and not a noticeable wait.
+- [ ] Pop a wrong bubble: "That's the letter …", the short pause, then "Can you find …".
+
 ## Pull request #12: Fixes from the Milestone 6 playtest
 
 Your voice first, from the very first question:

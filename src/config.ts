@@ -32,7 +32,7 @@ export const HUES = [330, 48, 190, 130, 265, 18];
 export const CHEER_PAUSE_MS = 500;
 /* A short breath between a line that has just finished (a cheer, "That's the letter A.", the party line) and the
    prompt that follows it, so the two don't run together. Kept under a second. */
-export const PROMPT_GAP_MS = 700;
+export const PROMPT_GAP_MS = 400;
 /* Play waits at most this long for your recordings to be ready (a "Loading…" bar shows meanwhile). */
 export const LOAD_WAIT_MS = 8000;
 

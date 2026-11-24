@@ -71,13 +71,13 @@ export default async function () {
     const p = t.findIndex((x) => x.startsWith('Can you find'));
     expect(p === 2, 'after a right pop: two cheer pieces, then the prompt: ' + t.join(' | '));
     const gap = at[p] - (at[p - 1] + 1500);   // the fake voice takes 1.5 s per line
-    expect(gap >= 500 && gap < 1000, `the prompt after a cheer should wait a moment (0.5 to 1 s), waited ${gap} ms`);
+    expect(gap >= 300 && gap < 1000, `the prompt after a cheer should wait a moment (0.3 to 1 s), waited ${gap} ms`);
     // a wrong pop: "That's the letter …", a pause, then the prompt
     env.bpp.say('wrong:B:A');
     await tick(env, 4000);
     const w = env.speech.times.slice(-2);
-    expect(env.speech.texts.at(-1).startsWith('Can you find') && w[1] - (w[0] + 1500) >= 500 && w[1] - (w[0] + 1500) < 1000,
-      'the prompt after "That\'s the letter …" should wait a moment (0.5 to 1 s)');
+    expect(env.speech.texts.at(-1).startsWith('Can you find') && w[1] - (w[0] + 1500) >= 300 && w[1] - (w[0] + 1500) < 1000,
+      'the prompt after "That\'s the letter …" should wait a moment (0.3 to 1 s)');
     // the repeat button after a quiet moment: no extra wait
     await tick(env, 2000);
     const k = env.speech.spoken;
