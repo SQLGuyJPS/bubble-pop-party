@@ -24,7 +24,7 @@ After any merge, before the pull request's own list:
 - [ ] Turn on Airplane Mode, close the game and open it again: it still plays, with sound.
 - [ ] Settings still open through the gate (hold 3 seconds, then the sum), and your saved settings are still there.
 
-## Pull request #PRNUM: Fixes from the Milestone 6 playtest
+## Pull request #12: Fixes from the Milestone 6 playtest
 
 Your voice first, from the very first question:
 
@@ -55,7 +55,7 @@ Sound after loading a file:
 ## Pull request #11: Recording clips inside the game (Milestone 6)
 
 Checked on 2026-11-24 on the iPhone and the iPad: everything worked, and the loudness is good. Three problems found
-there are fixed in the pull request above.
+there are fixed in #12, above.
 
 Recording on the iPhone, from the home-screen icon:
 
