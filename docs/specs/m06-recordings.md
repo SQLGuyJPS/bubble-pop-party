@@ -124,7 +124,7 @@ Which clip plays, for every clip:
   change. If a clip is still needed before it has finished decoding (after a settings change, or after the 8
   seconds), that one play uses the next source in the list.
 - **A breath before the prompt:** when a line has just finished by itself (a cheer, "That's the letter …", the party
-  line), the prompt that follows waits `PROMPT_GAP_MS` (0.7 s) so the two don't run together. A prompt that follows
+  line), the prompt that follows waits `PROMPT_GAP_MS` (0.4 s) so the two don't run together. A prompt that follows
   nothing (the repeat button, the 8-second repeat) starts straight away.
 - The trim and the volume change are applied once, when the clip is decoded. The decoded clip is stored ready to
   play, so playing it costs no more than today's `audio/` files.
