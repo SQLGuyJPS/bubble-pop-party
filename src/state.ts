@@ -62,6 +62,7 @@ export const state = {
   nextPromptAt: 0,
   hintOn: false,
   started: false,
+  loading: false,                       // Play was tapped and is waiting for your recordings ("Loading…")
   running: false,
   paused: false,
   uiLock: false,                        // the parent gate or settings is open: the game stays paused

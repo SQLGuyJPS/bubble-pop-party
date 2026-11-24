@@ -1,13 +1,13 @@
 /* The main loop, starting, pausing and resuming, play time, and what happens on a pop. */
 import { setHint, updateStars } from './banner';
 import {
-  HINT_IDLE_SECONDS, HINT_WRONG_POPS, HIT_SCALE, MAX_BUBBLES, MAX_PARTICLES, PARTY_SECONDS, POP_DURATION,
+  HINT_IDLE_SECONDS, HINT_WRONG_POPS, HIT_SCALE, LOAD_WAIT_MS, MAX_BUBBLES, MAX_PARTICLES, PARTY_SECONDS, POP_DURATION,
   PROMPT_REPEAT_SECONDS, RISE_SPEED, SPAWN_DEPTH, STARS_PER_PARTY, WOBBLE_DURATION
 } from './config';
 import { els, restartAnimation } from './dom';
 import { burst, draw, stepParticles } from './draw';
 import { glyphFor } from './items';
-import { ensureAudio, playBoop, playFanfare, playPop } from './sound';
+import { ensureAudio, ownProgress, playBoop, playFanfare, playPop } from './sound';
 import { say, stopSpeech } from './speech';
 import { state, type Bubble } from './state';
 import {
@@ -209,11 +209,38 @@ export function resumeGame(): void {
   resumeTimer = setTimeout(() => { if (!state.paused) say('prompt:' + state.target.key); }, 700);   // gentle re-prompt
 }
 
+/* Play. Your recordings are decoded while the start screen shows; if the child taps Play before they're all ready,
+   a "Loading…" bar fills until they are (at most LOAD_WAIT_MS), so the very first prompt is already in your voice. */
+let loadTimer: ReturnType<typeof setTimeout> | 0 = 0;
+export const LOAD_POLL_MS = 100;
 export function onPlay(): void {
   if (state.started) return;
   state.started = true;
-  ensureAudio();          // must happen inside the tap
+  ensureAudio();          // must happen inside the tap: it unlocks the sound for everything after
+  if (ownProgress().ready) { begin(); return; }   // usual case: first speech also happens inside the tap
+  state.loading = true;
+  els.start.classList.add('loading');
+  els.playLabel.textContent = 'Loading…';
+  let waited = 0;
+  const check = (): void => {
+    if (state.uiLock) { loadTimer = setTimeout(check, LOAD_POLL_MS); return; }   // the parent area opened: start after it
+    const p = ownProgress();
+    els.loadFill.style.setProperty('--load', (p.total ? Math.round(100 * p.done / p.total) : 0) + '%');
+    if (p.ready || waited >= LOAD_WAIT_MS) {
+      state.loading = false;
+      els.start.classList.remove('loading');
+      begin();
+      return;
+    }
+    waited += LOAD_POLL_MS;
+    loadTimer = setTimeout(check, LOAD_POLL_MS);
+  };
+  clearTimeout(loadTimer);
+  check();
+}
+
+function begin(): void {
   els.start.classList.add('hidden');
   startGame();
-  say('prompt:' + state.target.key);   // first speech also happens inside the tap, which iPads require
+  say('prompt:' + state.target.key);
 }

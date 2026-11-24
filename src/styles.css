@@ -139,6 +139,25 @@ canvas#game {
   50% { transform: scale(1.06); }
 }
 #playLabel { font-size: clamp(18px, 4vmin, 40px); }
+/* Tapped Play while your recordings are still loading: the button rests and a bar fills */
+#loadBar {
+  display: none;
+  width: min(58vmin, 380px);
+  height: 2.4vmin;
+  min-height: 12px;
+  border-radius: 99px;
+  background: #fff;
+  outline: 0.5vmin solid var(--navy);
+  overflow: hidden;
+}
+#loadFill {
+  width: var(--load, 0%);
+  height: 100%;
+  background: #ff5c9a;
+  transition: width 0.2s linear;
+}
+#start.loading #loadBar { display: block; }
+#start.loading #playBtn { animation: none; opacity: 0.6; }
 
 /* ---- Mute button (corner, always reachable, also on the start screen) ---- */
 #muteBtn {

@@ -8,7 +8,7 @@ import {
 import { backupAction, lastBackup, loadBytes } from './backup';
 import { els } from './dom';
 import { capHeight, forgetFontSize, isGlowing, layout } from './draw';
-import { handlePointer, pauseGame, resumeGame, startGame, step } from './game';
+import { handlePointer, onPlay, pauseGame, resumeGame, startGame, step } from './game';
 import { lookalike, pool } from './items';
 import {
   cancelHold, closeGate, closeSettings, doAction, gate, hearVoice, openGate, openSettings, pressKey, settingsOpen,
@@ -16,7 +16,7 @@ import {
 } from './parent';
 import { AUDIO_OVERRIDES, own, sourceFor } from './recordings';
 import { sanitizeSettings } from './settings';
-import { ensureAudio, setMuted } from './sound';
+import { ensureAudio, ownProgress, rebuilds, setMuted } from './sound';
 import { cancelTake, mic, releaseMic, startTake, stopTake, type TakeResult } from './mic';
 import {
   REC_IDLE_MS, appHidden, closeRecordings, counts, openRecordings, recAction, rowButtons, rowState, rs, summaryText
@@ -75,6 +75,9 @@ function check(): string[] {
 export function installDebug(): void {
   window.__bpp = {
     start: () => { state.started = true; els.start.classList.add('hidden'); startGame(); },
+    play: onPlay,                                     // the Play button, waiting for recordings like the real one
+    loadProgress: ownProgress,
+    audioRebuilds: () => rebuilds,
     step,
     resize: (w: number, h: number) => { state.W = w; state.H = h; layout(); },
     tap: handlePointer,
@@ -99,7 +102,7 @@ export function installDebug(): void {
         bubbles: s.bubbles, target: s.target, upcoming: s.upcoming, simTime: s.simTime, W: s.W, H: s.H, R: s.R, FS: s.FS,
         particles: s.particles.length, glowing: s.bubbles.filter(isGlowing).length, stars: s.stars, hintOn: s.hintOn, wrongsOnTarget: s.wrongsOnTarget,
         missed: s.missed, muted: s.muted, starsShown: s.starsShown, sparkles: sparklesWanted(),
-        paused: s.paused, running: s.running, ended: s.ended, uiLock: s.uiLock, sessionElapsed: s.sessionElapsed,
+        paused: s.paused, running: s.running, ended: s.ended, loading: s.loading, started: s.started, uiLock: s.uiLock, sessionElapsed: s.sessionElapsed,
         gateOpen: gate.open, gateStep: gate.step, settingsOpen, settings: s.settings,
         bannerWord: els.word.textContent
       };

@@ -116,10 +116,16 @@ Which clip plays, for every clip:
 - A deleted or damaged in-app recording falls back to 2, then 3.
 - Recordings go through the same audio path as today's `audio/` files: decoded ahead of time, played through the
   game's Web Audio context and the volume setting, muted by the speaker button.
-- **When they load:** at start-up the game reads the list of saved recordings (without the audio). After the first
-  tap unlocks sound, it decodes the clips the current settings can play, plus party and bye. Other clips are decoded
-  when the settings change. If the child needs a clip before it has finished decoding (a fraction of a second after
-  the first tap), that one play uses the next source in the list.
+- **When they load** (changed after the playtest, see "Playtest fixes" below): at start-up the game reads the list
+  of saved recordings (without the audio) and straight away decodes the clips the current settings can play, plus
+  party and bye. Decoding doesn't need the first tap. **Play waits for them:** if Play is tapped before they're all
+  decoded (or found unusable), the start screen shows **Loading…** and a bar that fills, and the game starts by
+  itself when they're ready, or after 8 seconds at most (`LOAD_WAIT_MS`). Other clips are decoded when the settings
+  change. If a clip is still needed before it has finished decoding (after a settings change, or after the 8
+  seconds), that one play uses the next source in the list.
+- **A breath before the prompt:** when a line has just finished by itself (a cheer, "That's the letter …", the party
+  line), the prompt that follows waits `PROMPT_GAP_MS` (0.7 s) so the two don't run together. A prompt that follows
+  nothing (the repeat button, the 8-second repeat) starts straight away.
 - The trim and the volume change are applied once, when the clip is decoded. The decoded clip is stored ready to
   play, so playing it costs no more than today's `audio/` files.
 
@@ -300,6 +306,14 @@ README.txt              two sentences: what this file is, and that it loads in t
 | Same clip in the backup file and on the device | Q12 |
 | Opened in a Safari tab, not from the icon | Works, with the separate-storage note (section 6) |
 | Old database version from a later milestone downgraded | Opening fails cleanly. Treated as blocked storage, game runs on defaults |
+
+### Playtest fixes (2026-11-24)
+
+| Found on the devices | Fix |
+| --- | --- |
+| Play tapped straight after opening: the first prompt was the computer voice (iPhone) or silent (iPad) | Recordings decode at start-up; Play waits for them with a "Loading…" bar (section 3) |
+| A recorded cheer or "That's the letter …" ran straight into the prompt | `PROMPT_GAP_MS` pause before a prompt that follows another line (section 3) |
+| Delete all, load the backup file, back to the game: no sound at all, not even the pops | iOS can leave the Web Audio context stuck after its file picker (or a call): "interrupted", or never waking. Opening the file picker marks it, and so does a tap that couldn't wake it within 0.8 s; the next tap closes it and makes a fresh one (decoded clips are kept). An "interrupted" context is replaced at the next tap |
 
 ## 10. Step 1: the microphone test page
 
@@ -535,19 +549,19 @@ Each step is its own commit, and all checks pass from step 3 on.
 ## 15. Done when
 
 - [ ] `npm test` ends with `0 problems found`, on your computer and in GitHub Actions.
-- [ ] The spoken-lines sample is unchanged.
+- [ ] The spoken-lines sample is unchanged (its words; the playtest fixes moved its timings: the pause before prompts).
 - [ ] No file in `src/` is over about 400 lines.
 - [x] The microphone test results are in this spec (iPhone and iPad: done), and the game uses what they showed.
-- [ ] On the iPhone, **from the home-screen icon**: record a few clips, including the first take after opening the
+- [x] On the iPhone, **from the home-screen icon**: record a few clips, including the first take after opening the
       app (the microphone question doesn't shorten it); the pops and the computer voice are **as loud as before and
       from the speakers**, also after several takes; the mic dot goes away after each take.
-- [ ] Save recordings to a file on the iPhone, AirDrop it to the iPad, load it in the game on the iPad (from its
+- [x] Save recordings to a file on the iPhone, AirDrop it to the iPad, load it in the game on the iPad (from its
       home-screen icon): the child hears the recordings in the game, at a comfortable loudness.
-- [ ] Recordings survive closing the app, restarting the device, and an update of the game, on both devices.
-- [ ] With Airplane Mode on: recording (iPhone), playing (iPad) and the game all work.
-- [ ] On the iPad, delete them all in the game, load the file again: they're back and play.
-- [ ] Clips at the same loudness as each other, and comfortable next to the pops (tuned by ear).
-- [ ] `git status` shows no recordings: nothing recorded on either device is in the repository.
+- [x] Recordings survive closing the app, restarting the device, and an update of the game, on both devices.
+- [x] With Airplane Mode on: recording (iPhone), playing (iPad) and the game all work.
+- [x] On the iPad, delete them all in the game, load the file again: they're back and play.
+- [x] Clips at the same loudness as each other, and comfortable next to the pops (tuned by ear).
+- [x] `git status` shows no recordings: nothing recorded on either device is in the repository.
 - [ ] README, AUDIO-GUIDE, CLAUDE.md and ROADMAP are updated.
 
 ## 16. Risks

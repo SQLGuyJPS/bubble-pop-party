@@ -1,7 +1,7 @@
 /* The page's elements, looked up once at start-up by findElements(). */
 
 const IDS = {
-  canvas: 'game', start: 'start', play: 'playBtn', banner: 'banner', glyph: 'bGlyph', pic: 'bPic', word: 'bWord',
+  canvas: 'game', start: 'start', play: 'playBtn', playLabel: 'playLabel', loadFill: 'loadFill', banner: 'banner', glyph: 'bGlyph', pic: 'bPic', word: 'bWord',
   replay: 'replayBtn', mute: 'muteBtn', stars: 'stars', party: 'party', gear: 'gearBtn', gate: 'gate',
   gateClose: 'gateClose', gateHold: 'gateHold', gateMath: 'gateMath', holdBtn: 'holdBtn', mathQ: 'mathQ',
   mathA: 'mathA', pad: 'pad', settings: 'settings', panel: 'panel', letterChips: 'letterChips',

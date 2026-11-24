@@ -24,47 +24,78 @@ After any merge, before the pull request's own list:
 - [ ] Turn on Airplane Mode, close the game and open it again: it still plays, with sound.
 - [ ] Settings still open through the gate (hold 3 seconds, then the sum), and your saved settings are still there.
 
+## Pull request #12: Fixes from the Milestone 6 playtest
+
+Your voice first, from the very first question:
+
+- [ ] On the iPhone, with recordings saved: close the game from the app switcher, open it from its icon and tap
+  **Play** straight away. If the recordings aren't ready yet, the screen says **Loading…** with a pink bar that
+  fills, then the game starts by itself. The **first** question is in your voice, not the computer voice.
+- [ ] The same on the iPad: the first question is in your voice, not silence.
+- [ ] Open the game and wait a few seconds before tapping Play: it starts at once, with no Loading bar.
+- [ ] Tapping Play again while it says Loading… changes nothing; the game still starts once.
+- [ ] With no recordings on a device (or after **Delete all recordings**), Play starts at once, in the computer voice.
+
+A short pause before the question:
+
+- [ ] Pop the right bubble: after the cheer ("Great! … A is for apple.") there's a short pause, under a second, before
+  "Can you find …". The two no longer run together.
+- [ ] Pop a wrong bubble: "That's the letter …", a short pause, then "Can you find …".
+- [ ] Every tenth star: the cheer, the party line, then a short pause before the question.
+- [ ] The speaker button at the top (say it again) still asks straight away, with no extra wait.
+
+Sound after loading a file:
+
+- [ ] On the iPhone or iPad: **Delete all recordings**, then straight away **Load recordings from a file** and load the
+  backup. Tap **Back to settings**, then **Done**. The question is in your voice, and the pops, the cheer and the
+  ta-da all play.
+- [ ] Do the same but just open the file picker and tap **Cancel**, then go back to the game: all the sounds still play.
+- [ ] Lock the screen during a game (or take a phone call on the iPhone), come back and tap a bubble: the sounds play.
+
 ## Pull request #11: Recording clips inside the game (Milestone 6)
+
+Checked on 2026-11-24 on the iPhone and the iPad: everything worked, and the loudness is good. Three problems found
+there are fixed in #12, above.
 
 Recording on the iPhone, from the home-screen icon:
 
-- [ ] Settings shows a **Recordings** line (for example "0 of 17 recorded in your voice.") and **Open recordings**.
-- [ ] Open recordings shows a group for each letter or number you play, then "Whole game". **Show every letter and
+- [x] Settings shows a **Recordings** line (for example "0 of 17 recorded in your voice.") and **Open recordings**.
+- [x] Open recordings shows a group for each letter or number you play, then "Whole game". **Show every letter and
   number** lists them all. **Back to settings** goes back.
-- [ ] The first **Record** after opening the app: the iPhone asks for the microphone and the panel says "Tap Allow…".
+- [x] The first **Record** after opening the app: the iPhone asks for the microphone and the panel says "Tap Allow…".
   Wait a few seconds before tapping Allow. The red dot and the ring only start after you allow, and the take is not cut
   short.
-- [ ] Say the line and tap **Stop**: it plays back once, and the row says "Your voice". Try one where you don't tap
+- [x] Say the line and tap **Stop**: it plays back once, and the row says "Your voice". Try one where you don't tap
   Stop: it stops by itself after 6 seconds.
-- [ ] The orange microphone dot at the top of the screen goes away after each take.
-- [ ] After several takes, the pops and the computer voice are **as loud as before and come from the speakers**, not the
+- [x] The orange microphone dot at the top of the screen goes away after each take.
+- [x] After several takes, the pops and the computer voice are **as loud as before and come from the speakers**, not the
   earpiece.
-- [ ] Record while saying nothing: "I didn't hear anything…", and any earlier recording of that line stays.
-- [ ] **Re-record** a line, then **Delete** it: Delete asks first, then the row falls back to the audio file or the
+- [x] Record while saying nothing: "I didn't hear anything…", and any earlier recording of that line stays.
+- [x] **Re-record** a line, then **Delete** it: Delete asks first, then the row falls back to the audio file or the
   computer voice.
-- [ ] Tap Record, then tap **Don't Allow**: a message says how to allow the microphone. Nothing breaks. Record still
+- [x] Tap Record, then tap **Don't Allow**: a message says how to allow the microphone. Nothing breaks. Record still
   works after allowing it in the Settings app.
-- [ ] Start a take and press the Home button (or swipe up): the take stops, nothing is saved, the old recording stays.
-- [ ] Leave the Recordings screen open without touching it: after 3 minutes it closes to the game.
-- [ ] Play a game: the lines you recorded play in your voice, the others in the computer voice or from `audio/`.
+- [x] Start a take and press the Home button (or swipe up): the take stops, nothing is saved, the old recording stays.
+- [x] Leave the Recordings screen open without touching it: after 3 minutes it closes to the game.
+- [x] Play a game: the lines you recorded play in your voice, the others in the computer voice or from `audio/`.
 
 Moving them to the iPad:
 
-- [ ] On the iPhone: **Save recordings to a file**, choose AirDrop, send it to the iPad. Tapping Cancel in the share
+- [x] On the iPhone: **Save recordings to a file**, choose AirDrop, send it to the iPad. Tapping Cancel in the share
   sheet shows no error.
-- [ ] On the iPad, from its home-screen icon: **Load recordings from a file**, pick the file. It says how many it found
+- [x] On the iPad, from its home-screen icon: **Load recordings from a file**, pick the file. It says how many it found
   and loads them.
-- [ ] Load the same file again: it offers **Replace those …**, **Keep mine, add only the … new ones**, and **Cancel**.
-- [ ] Play a game on the iPad: the child hears your recordings, at a comfortable loudness next to the pops, and the
+- [x] Load the same file again: it offers **Replace those …**, **Keep mine, add only the … new ones**, and **Cancel**.
+- [x] Play a game on the iPad: the child hears your recordings, at a comfortable loudness next to the pops, and the
   clips sound about as loud as each other. (If not, note which ones: the loudness target is tuned in step 11.)
-- [ ] **Delete all recordings** (it asks first), then load the file again: they're all back and play.
-- [ ] Open the file on a computer: it unzips, and the `.m4a` files inside play.
+- [x] **Delete all recordings** (it asks first), then load the file again: they're all back and play.
+- [x] Open the file on a computer: it unzips, and the `.m4a` files inside play.
 
 Keeping them:
 
-- [ ] Recordings survive closing the app, restarting the device, and the next game update, on both devices.
-- [ ] With Airplane Mode on: recording on the iPhone, playing on the iPad, and the game itself all work.
-- [ ] On your computer, `git status` shows no recordings: nothing recorded is in the repository.
+- [x] Recordings survive closing the app, restarting the device, and the next game update, on both devices.
+- [x] With Airplane Mode on: recording on the iPhone, playing on the iPad, and the game itself all work.
+- [x] On your computer, `git status` shows no recordings: nothing recorded is in the repository.
 
 ## Pull request #10: Mic test file fix and the iPad's results
 

@@ -135,18 +135,24 @@ function fakeWebAudio(opts, webaudio, setT, clearT, starting) {
   }
   const param = () => ({ value: 0, setValueAtTime() {}, exponentialRampToValueAtTime() {}, linearRampToValueAtTime() {} });
   return class AudioContext {
-    constructor() { this.sampleRate = 48000; this.state = 'suspended'; this.currentTime = 0; this.destination = {}; webaudio.contexts++; }
-    resume() { this.state = 'running'; return Promise.resolve(); }
+    constructor() { this.sampleRate = 48000; this.state = 'suspended'; this.currentTime = 0; this.destination = {}; webaudio.contexts++; webaudio.last = this; }
+    resume() { if (!this.stuck) this.state = 'running'; return Promise.resolve(); }   // ctx.stuck: iOS left it unable to wake
+    close() { this.state = 'closed'; webaudio.closed++; return Promise.resolve(); }
     createGain() { return { gain: param(), connect() {}, disconnect() {} }; }
     createBuffer(ch, len, rate) { return new AudioBuffer(ch, len, rate); }
-    createOscillator() { return { type: '', frequency: param(), connect() {}, start() {}, stop() {} }; }
+    createOscillator() {   // the pops, ta-da and bloop: counted, and counted as silent when the context isn't running
+      const ctx = this;
+      return { type: '', frequency: param(), connect() {}, start() { webaudio.effects++; if (ctx.state !== 'running') webaudio.silent++; }, stop() {} };
+    }
     createBiquadFilter() { return { type: '', frequency: param(), connect() {} }; }
     createBufferSource() {
+      const ctx = this;
       const src = {
         buffer: null, onended: null, connect() {}, disconnect() {},
         start() {
           const b = src.buffer;
           if (!b || b.duration < 0.2) return;          // the pop's noise and the silent unlock sound
+          if (ctx.state !== 'running') webaudio.silent++;
           starting();
           webaudio.played.push(b);
           webaudio.playing++;
@@ -217,14 +223,16 @@ export function makeEnv(opts) {
   let clock = 0, timerId = 1;
   const fakeSetTimeout = (fn, ms) => { const id = timerId++; timers.push({ id, t: clock + (ms || 0), fn }); return id; };
   const fakeClearTimeout = (id) => { const i = timers.findIndex((x) => x.id === id); if (i >= 0) timers.splice(i, 1); };
-  const advance = (ms) => {
-    clock += ms;
+  const advance = (ms) => {   // runs each timer at its own time, so a timer set inside another one is due when it should be
+    const end = clock + ms;
     for (;;) {
-      const due = timers.filter((x) => x.t <= clock).sort((a, b) => a.t - b.t)[0];
+      const due = timers.filter((x) => x.t <= end).sort((a, b) => a.t - b.t || a.id - b.id)[0];
       if (!due) break;
       timers.splice(timers.indexOf(due), 1);
+      clock = Math.max(clock, due.t);
       due.fn();
     }
+    clock = end;
   };
 
   const ctx2d = new Proxy({}, {
@@ -256,7 +264,8 @@ export function makeEnv(opts) {
     fonts: undefined
   };
 
-  const webaudio = { contexts: 0, played: [], playing: 0, maxPlaying: 0, decodes: 0 };
+  // webaudio.silent: sounds started on a context that isn't running (on an iPad they make no sound)
+  const webaudio = { contexts: 0, closed: 0, last: null, effects: 0, silent: 0, played: [], playing: 0, maxPlaying: 0, decodes: 0 };
   // fake speech: counts how many utterances are waiting so we can prove it never exceeds one
   const speech = { queued: [], maxQueued: 0, spoken: 0, cancels: 0, texts: [], times: [], volumes: [], overlaps: 0 };
   const sounding = () => speech.queued.length + audio.playing.length + webaudio.playing;   // spoken lines playing now

@@ -57,13 +57,14 @@ export async function prepareRecording(r: ClipRecord): Promise<AudioBuffer | nul
   } catch { return null; }
 }
 
-/* Recordings made in the game: once sound is unlocked, the ones the current settings can play are read and decoded
-   (the trim and the volume change are applied once, here). Others are let go, to save memory. A clip that isn't
-   ready yet simply uses the next source for that one play. */
+/* Recordings made in the game: as soon as the page has loaded (decoding doesn't need the first tap), the ones the
+   current settings can play are read and decoded (the trim and the volume change are applied once, here). Others
+   are let go, to save memory. Play waits for them (ownProgress); a clip still not ready when it's needed simply
+   uses the next source for that one play. */
 const ownLoading = new Set<string>();
 const ownGeneration: Record<string, number> = {};
 export function decodeOwnClips(): void {
-  if (!audioUnlocked || !audioCtx) return;
+  if (!audioCtx || !own.listed) return;
   const wanted = new Set(clipsFor(state.settings).map((c) => c.name));
   for (const n of Object.keys(own.buffers)) if (!wanted.has(n)) delete own.buffers[n];
   for (const n of wanted) {
@@ -82,6 +83,19 @@ export function decodeOwnClips(): void {
       if (buf) own.buffers[n] = buf; else own.problems[n] = 'damaged';
     })().finally(() => { ownLoading.delete(n); });
   }
+}
+
+/* How far the decoding of the recordings the current settings can play has got. Ready when every one is decoded
+   or known to be unusable, or when there is nothing to decode with (no Web Audio). */
+export function ownProgress(): { ready: boolean; done: number; total: number } {
+  if (!own.listed) return { ready: false, done: 0, total: 0 };
+  let done = 0, total = 0;
+  for (const c of clipsFor(state.settings)) {
+    if (!own.saved.has(c.name) && !own.problems[c.name]) continue;
+    total++;
+    if (own.buffers[c.name] || own.problems[c.name]) done++;
+  }
+  return { ready: !audioCtx || done >= total, done, total };
 }
 
 /* A recording was saved, replaced or deleted on the Recordings screen: forget what was decoded before.
@@ -121,10 +135,33 @@ export function setMuted(m: boolean): void {
 }
 
 let audioUnlocked = false;
+let audioStale = false;              // the context looks stuck: make a new one at the next tap
+let staleTimer: ReturnType<typeof setTimeout> | 0 = 0;
+export const STALE_CHECK_MS = 800;   // a context that isn't running this long after a tap woke it is stuck
+export let rebuilds = 0;             // how many times a stuck context was replaced (for the tests)
+
+/* iOS can leave the audio context stuck after the file picker (Load recordings from a file), a call or the app
+   going to the background: it stays "interrupted" or "suspended", or claims to run and plays nothing. Waking it
+   isn't always enough, so the next tap after that throws it away and makes a fresh one. Decoded clips are kept:
+   they play on the new context. */
+export function audioNeedsRebuild(): void { audioStale = true; }
+function dropStaleContext(): void {
+  const ctx = audioCtx;
+  if (!ctx) return;
+  const st = String(ctx.state);
+  if (!audioStale && st !== 'interrupted' && st !== 'closed') return;
+  stopSpeech();
+  audioCtx = null; master = null; noiseBuf = null;
+  audioUnlocked = false; audioStale = false;
+  rebuilds++;
+  try { void ctx.close().catch(() => {}); } catch { /* already gone */ }
+}
+
 /* Creates the audio context and unlocks it. Must be called inside a tap (iPads require it), except
    ensureAudio(true) at page load, which only gets the recordings decoding. */
 export function ensureAudio(early?: boolean): void {
   try {
+    if (!early) dropStaleContext();
     if (!audioCtx) {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
@@ -138,7 +175,7 @@ export function ensureAudio(early?: boolean): void {
       for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
     }
     preloadClips();
-    if (early) return;
+    if (early) { decodeOwnClips(); return; }
     if (!audioUnlocked) {
       // play one silent sound inside the tap: this is what unlocks audio on iPads
       const s = audioCtx.createBufferSource();
@@ -149,6 +186,11 @@ export function ensureAudio(early?: boolean): void {
       decodeOwnClips();
     }
     if (audioCtx.state !== 'running' && audioCtx.resume) void audioCtx.resume();
+    const ctx = audioCtx;
+    clearTimeout(staleTimer);
+    staleTimer = setTimeout(() => {   // still not running after a tap asked it to: start afresh at the next tap
+      if (ctx === audioCtx && String(ctx.state) !== 'running' && !document.hidden) audioStale = true;
+    }, STALE_CHECK_MS);
   } catch { /* sound effects are optional */ }
 }
 

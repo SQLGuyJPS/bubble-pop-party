@@ -12,12 +12,13 @@ export const AUDIO_OVERRIDES: Record<string, string> = { ...__RECORDINGS__ };
 export const own = {
   saved: new Set<string>(),                       // clips with a saved recording (read at start-up, without the audio)
   buffers: {} as Record<string, AudioBuffer>,     // decoded, trimmed and levelled: ready to play
-  problems: {} as Record<string, 'damaged' | 'words'>   // saved, but not played (the Recordings screen says why)
+  problems: {} as Record<string, 'damaged' | 'words'>,  // saved, but not played (the Recordings screen says why)
+  listed: false                                    // the saved list has been read (or storage gave up)
 };
 
-/* At start-up: which clips have a recording. The audio itself is read and decoded after the first tap. */
+/* At start-up: which clips have a recording. The audio itself is read and decoded straight after (sound.ts). */
 export async function loadSavedList(): Promise<void> {
-  for (const n of await savedNames()) own.saved.add(n);
+  try { for (const n of await savedNames()) own.saved.add(n); } finally { own.listed = true; }
 }
 
 export type Source = 'own' | 'file' | 'voice';
