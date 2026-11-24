@@ -1,6 +1,6 @@
 /* Speech: everything the game says goes through say(clip). A clip is your recording if there is one, otherwise
    the computer voice. Only one spoken line at a time: say() always stops whatever was playing first. */
-import { CHEER_PAUSE_MS } from './config';
+import { CHEER_PAUSE_MS, PROMPT_GAP_MS } from './config';
 import { clipByName } from './clips';
 import { AUDIO_OVERRIDES, own } from './recordings';
 import { audioCtx, clipBuffers, master } from './sound';
@@ -35,6 +35,8 @@ let speakTimer: ReturnType<typeof setTimeout> | 0 = 0;
 let safetyTimer: ReturnType<typeof setTimeout> | 0 = 0;
 let currentUtter: SpeechSynthesisUtterance | null = null;   // keep a reference: iOS can drop utterances that get garbage collected
 let currentAudio: { pause(): void } | null = null;
+let justEnded = false;     // a line finished by itself less than PROMPT_GAP_MS ago (a prompt then waits a moment)
+let justEndedTimer: ReturnType<typeof setTimeout> | 0 = 0;
 export const sayLog: string[] = [];
 
 export const BAD_VOICES = /bad news|bahh|bells|boing|bubbles|cellos|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|albert|fred|junior|ralph|kathy|deranged|hysterical|pipe/i;
@@ -112,6 +114,9 @@ function playClip(clip: string, token: number, next: () => void): void {
     if (called || token !== speechToken) return;
     called = true;
     clearTimeout(safetyTimer);
+    justEnded = true;
+    clearTimeout(justEndedTimer);
+    justEndedTimer = setTimeout(() => { justEnded = false; }, PROMPT_GAP_MS);
     next();
   }
   function speakText(): void {
@@ -181,7 +186,9 @@ export function say(clip: string, after?: () => void): void {
     if (token !== speechToken) return;
     const part = parts[i];
     if (part === undefined) { if (after) after(); return; }
-    playClip(part, token, () => { playPart(i + 1); });
+    const go = (): void => { if (token === speechToken) playClip(part, token, () => { playPart(i + 1); }); };
+    if (justEnded && part.startsWith('prompt:')) speakTimer = setTimeout(go, PROMPT_GAP_MS);   // a breath after the line before
+    else go();
   }
   if (state.muted || mic.phase !== 'idle') {   // sound is off, or recording: keep the game's rhythm, make no noise
     speakTimer = setTimeout(() => { if (token === speechToken && after) after(); }, 1200);

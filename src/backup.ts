@@ -3,7 +3,7 @@
 import { els } from './dom';
 import { backupName, makeBackup, readBackup } from './bundle';
 import { render as renderScreen, reload, rs, storageWorks, touched } from './recscreen';
-import { ownReloaded, prepareRecording } from './sound';
+import { audioNeedsRebuild, ownReloaded, prepareRecording } from './sound';
 import { stopSpeech } from './speech';
 import { writeClips, type ClipRecord } from './store';
 
@@ -54,6 +54,7 @@ export function pickFile(): void {
   const input = document.getElementById('recFile') as HTMLInputElement | null;
   if (!input) return;
   input.value = '';
+  audioNeedsRebuild();   // iOS can leave the sound stuck after its file picker: the next tap starts it afresh
   input.click();
 }
 

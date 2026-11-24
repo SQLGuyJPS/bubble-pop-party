@@ -114,6 +114,11 @@ recordings** is at the bottom.
    ones**, or **Cancel**.
 4. It says how many it loaded. Tap **Back to settings**, then **Done**. She now hears your voice.
 
+When the game is opened with recordings on the device, it gets them ready while the Play button shows. If Play is
+tapped before they're ready, the screen says **Loading…** with a bar that fills, and the game starts by itself as soon
+as your voice is ready (usually a second or two, never more than about 8 seconds). That way the very first question is
+already in your voice.
+
 ### Keep a backup
 
 - Now and then, tap **Save recordings to a file** and choose **Save to Files** (for example iCloud Drive). The

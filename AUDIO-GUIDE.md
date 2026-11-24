@@ -49,6 +49,8 @@ A–E and 1–5 that's
 - Go slowly and sound happy. A 2-year-old likes a bright, clear voice.
 - Record in a quiet room, with the phone or microphone close to your mouth.
 - Start talking right away and stop right after the last word. Long silence at the start makes the game feel laggy.
+- No need to leave silence at the end of a clip: the game itself waits a moment (under a second) before the
+  question that follows a cheer, the party line or "That's the letter …", so the two don't run together.
 - Keep each clip short: under about 3 seconds. The "Great!" clip is the longest. Leave the short pause between "Great!" and "A is for apple" inside the one recording.
 - Record several clips in a row in one sitting so they all sound the same volume.
 

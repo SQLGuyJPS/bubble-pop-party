@@ -151,27 +151,21 @@ export default async function () {
       'that:A': record('that:A', { gain: -3 }),                    // damaged, with a file
       'that:B': record('that:B', { words: 'Find the letter B!' }),  // the words have changed since: not played
       'party': record('party', { audio: bad }),                    // won't decode on this device, with a file
-      'bye': record('bye'),                                        // deleted before it was decoded
-      'prompt:C': record('prompt:C')                               // not in the current letters
+      'prompt:C': record('prompt:C'),                              // not in the current letters
+      'prompt:D': record('prompt:D')                               // not in the current letters; deleted before it was decoded
     });
     const files = { 'prompt:A': 'audio/prompt-A.m4a', 'cheer:A': 'audio/cheer-A.m4a', 'that:A': 'audio/that-A.m4a', 'party': 'audio/party.m4a' };
     const want = { 'prompt:A': 'own', 'prompt:B': 'own', 'cheer:A': 'file', 'cheer:B': 'voice', 'that:A': 'file', 'that:B': 'voice', 'party': 'file', 'bye': 'voice' };
     const env = freshGame({ letters: 'AB' }, { idb, audio: 'ok', webaudio: true });
     const { bpp } = env;
     Object.assign(bpp.overrides, files);
-    await flush();
-    expect(bpp.rec.saved().length === 7, 'the saved list was not read at start-up');
-    expect(bpp.rec.ready().length === 0 && env.webaudio.decodes === 0, 'recordings were decoded before the first tap');
-    // needed before it has finished decoding: that one play uses the next source
-    bpp.unlockAudio();
-    idb.stores.get('clips').delete('bye');
-    bpp.say('prompt:A');
-    expect(env.audio.created.at(-1) === 'audio/prompt-A.m4a', 'a recording still decoding should fall back to the audio/ file for that play');
     await flush(12);
-    expect(bpp.rec.ready().join() === 'prompt:A,prompt:B', 'decoded recordings should be prompt:A and prompt:B, got ' + bpp.rec.ready().join());
+    expect(bpp.rec.saved().length === 7, 'the saved list was not read at start-up');
+    // decoded straight after the page loads, before the first tap, so the first prompt can already be your voice
+    expect(bpp.rec.ready().join() === 'prompt:A,prompt:B', 'recordings should be decoded at start-up, before the first tap: got ' + bpp.rec.ready().join());
+    bpp.unlockAudio();
     expect(JSON.stringify(bpp.rec.problems()) === JSON.stringify({ 'that:A': 'damaged', 'that:B': 'words', party: 'damaged' }),
       'damaged, undecodable and changed-words recordings should be reported: ' + JSON.stringify(bpp.rec.problems()));
-    expect(!bpp.rec.saved().includes('bye'), 'a deleted recording is still listed');
     for (const [clip, src] of Object.entries(want)) {
       expect(bpp.rec.source(clip) === src, `${clip} should come from ${src}, but comes from ${bpp.rec.source(clip)}`);
       env.advance(6000);
@@ -193,15 +187,22 @@ export default async function () {
     bpp.say('wrong:B:A');
     env.advance(200);
     expect(env.speech.texts.at(-1) === "That's the letter bee.", 'wrong pop: the changed-words "that:B" should use the computer voice');
-    env.advance(2000);
+    env.advance(2600);
     expect(env.webaudio.playing === 1 && env.speech.queued.length === 0, 'wrong pop: the prompt recording did not follow the computer voice');
     env.advance(3000);
     // changing the letters decodes their recordings and lets go of the others
     passGate(env);
     bpp.ui.action('letters-preset', 'CD');
+    idb.stores.get('clips').delete('prompt:D');
     bpp.ui.closeSettings();
+    // needed before it has finished decoding: that one play uses the next source
+    env.advance(800);
+    bpp.say('prompt:C');
+    env.advance(50);
+    expect(env.speech.texts.at(-1) === 'Can you find the letter see?', 'a recording still decoding should fall back to the computer voice for that play');
     await flush(12);
     expect(bpp.rec.ready().join() === 'prompt:C', 'after choosing C and D, only prompt:C should be decoded, got ' + bpp.rec.ready().join());
+    expect(!bpp.rec.saved().includes('prompt:D'), 'a deleted recording is still listed');
     expect(playLong(env, 30).length === 0, 'rules broken while playing with recordings');
     report('playback order: your recording, then audio/, then the computer voice', before);
   }
